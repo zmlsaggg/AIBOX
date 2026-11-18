@@ -1,7 +1,7 @@
 import type { PrisonerAction } from "./contracts";
 
 const MAX_TEXT = 600;
-const MAX_COORDINATE = 11;
+const MAX_COORDINATE = 15;
 
 function shortText(value: unknown, field: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
