@@ -79,3 +79,26 @@ The turn controller already has the important cancellation rule: interrupting a 
 ## License
 
 Not yet selected. Check asset licenses before adding external models, textures or sounds.
+
+
+## Real browser AI sessions (no API keys)
+
+The game can use a local Playwright companion instead of the demo provider.
+
+1. Start the Vite app with `npm install && npm run dev`.
+2. In a second terminal run:
+
+   ```bash
+   cd bridge
+   npm install
+   npx playwright install chromium
+   npm start
+   ```
+
+3. Copy the one-time pairing token printed by the bridge into **LOCAL PAIRING TOKEN** in the AI panel.
+4. Select ChatGPT and click **CONNECT BROWSER SESSION**. A separate visible Chromium profile opens; sign in manually. Then start the shift and run AI turns.
+5. Switch to DeepSeek, Qwen, Gemini or Claude in the same selector when you want to use another website.
+
+The bridge uses a dedicated persistent browser profile under `~/.aibox/browser-profile`, not your everyday browser profile. The first version supports ChatGPT, DeepSeek, Qwen Chat, Gemini and Claude. Website UI selectors can change and may need updates.
+
+**Important:** browser automation does not remove provider quotas, subscription limits, safety rules or CAPTCHAs. A refusal is not treated as a technical failure and is not automatically routed to another model. The player chooses providers manually. Do not use this bridge to automate account creation or evade provider restrictions.

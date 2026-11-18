@@ -205,3 +205,14 @@ button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
   .scene-chip b { font-size: 7px; }
   .scene-chip small { font-size: 7px; }
 }
+
+
+/* Local browser-session controls */
+.browser-session-controls { display:grid; gap:8px; margin:12px 0 11px; padding:10px; border:1px solid rgba(118,212,189,.16); border-radius:6px; background:rgba(4,12,15,.36); }
+.browser-session-controls label { display:grid; gap:5px; color:#809391; font:7px var(--mono); letter-spacing:.08em; }
+.browser-session-controls select, .browser-session-controls input { width:100%; min-width:0; padding:8px 9px; border:1px solid rgba(156,183,182,.16); border-radius:4px; outline:none; color:#dce7e3; background:#101b20; font:10px var(--mono); }
+.browser-session-controls select:focus, .browser-session-controls input:focus { border-color:rgba(118,212,189,.55); }
+.connect-browser-button { padding:9px; border:1px solid rgba(118,212,189,.32); border-radius:4px; color:#a6dfcf; background:rgba(118,212,189,.08); font:8px var(--mono); letter-spacing:.08em; cursor:pointer; }
+.connect-browser-button:hover { background:rgba(118,212,189,.15); }
+.connect-browser-button:disabled { opacity:.55; cursor:wait; }
+#browser-connection-status { color:#7f9994; font:8px/1.5 var(--mono); overflow-wrap:anywhere; }

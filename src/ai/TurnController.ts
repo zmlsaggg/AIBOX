@@ -11,10 +11,16 @@ export class TurnController {
   private state: TurnState = "idle";
 
   constructor(
-    private readonly provider: AIProvider,
+    private provider: AIProvider,
     private readonly apply: (result: TurnResult) => void,
     private readonly onState: (state: TurnState, detail?: string) => void,
   ) {}
+
+  setProvider(provider: AIProvider): boolean {
+    if (this.state === "generating" || this.state === "applying") return false;
+    this.provider = provider;
+    return true;
+  }
 
   get currentState(): TurnState {
     return this.state;
