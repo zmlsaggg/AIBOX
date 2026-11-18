@@ -54,6 +54,7 @@ export class Game {
   private cameraPreset: "overview" | "cell" = "overview";
   private lastAction = "Заключённый ожидает первого хода";
   private prisonerAlert = false;
+  private hasEscaped = false;
 
   private constructor(
     canvas: HTMLCanvasElement,
@@ -173,6 +174,15 @@ export class Game {
     this.prisoner.update(delta, true);
     for (const npc of this.hiredGuards) npc.update(delta);
 
+    const prisonerPosition = this.prisoner.position;
+    this.prisonerAlert = !this.hasEscaped && prisonerPosition.x > 9.6 && Math.abs(prisonerPosition.z) < 2.6;
+    if (!this.hasEscaped && prisonerPosition.x > 12.8 && Math.abs(prisonerPosition.z) < 2.5) {
+      this.hasEscaped = true;
+      this.prisonerAlert = true;
+      this.prisoner.stop();
+      this.callbacks.onEvent("CONTAINMENT FAILED — заключённый покинул периметр.", "warning");
+    }
+
     this.cameraTarget.lerp(
       this.cameraPreset === "overview" ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(-7.2, 0, -4.5),
       Math.min(delta * 2.8, 1),
@@ -214,6 +224,10 @@ export class Game {
         this.callbacks.onEvent(`ИИ выжидает: ${action.narration}`);
         break;
     }
+    if (this.turn > 0 && this.turn % 3 === 0 && !this.hasEscaped) {
+      this.money += 120;
+      this.callbacks.onEvent("Премия за удержание заключённого: +$120.", "success");
+    }
     this.emitStats();
   }
 
@@ -234,11 +248,13 @@ export class Game {
       return;
     }
     this.alarmReadyAt = now + 30_000;
-    if (!this.prisonerAlert) {
+    if (this.hasEscaped) {
+      this.callbacks.onEvent("Тревога запоздала: заключённый уже покинул периметр.", "warning");
+    } else if (!this.prisonerAlert) {
       this.money = Math.max(0, this.money - 180);
       this.callbacks.onEvent("Ложная тревога: штраф −$180.", "warning");
     } else {
-      this.callbacks.onEvent("Тревога подтверждена. Периметр заблокирован.", "success");
+      this.callbacks.onEvent("Тревога подтверждена. Заключённый у внешнего периметра.", "success");
     }
     this.emitStats();
   }
