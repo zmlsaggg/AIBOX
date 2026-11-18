@@ -213,7 +213,7 @@ export class Game {
         break;
       case "interact": {
         const position = this.prisoner.position;
-        const directOpen = this.layout.toggleDoor(action.target);
+        const directOpen = this.layout.toggleDoorNear(action.target, position.x, position.z, 2.4);
         const nearest = directOpen === null
           ? this.layout.toggleNearestDoor(position.x, position.z, 2.4)
           : { id: action.target, open: directOpen };
