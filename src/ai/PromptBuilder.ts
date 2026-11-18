@@ -20,6 +20,7 @@ export function buildPrisonerPrompt(snapshot: PrisonSnapshot): string {
     `VISIBLE OBJECTS: ${snapshot.visibleObjects.join(", ") || "none"}`,
     `RECENT EVENTS: ${snapshot.recentEvents.slice(-5).join(" | ") || "none"}`,
     "",
+    "To pick up a loose item, use interact with its exact visible id (keycard, wrench, or canteen).",
     "Choose one action. The game, not you, determines whether it succeeds.",
   ].join("\n");
 }

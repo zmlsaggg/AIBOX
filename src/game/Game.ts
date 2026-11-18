@@ -2,6 +2,8 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Character } from "./Character";
 import { PrisonLayout } from "./PrisonLayout";
+import { EnvironmentDetails } from "./EnvironmentDetails";
+import { PickupSystem } from "./PickupSystem";
 import { DemoProvider } from "../ai/DemoProvider";
 import type { AIProvider } from "../ai/contracts";
 import { TurnController, type TurnState } from "../ai/TurnController";
@@ -36,6 +38,7 @@ export class Game {
   private readonly camera: THREE.OrthographicCamera;
   private readonly physics: InstanceType<typeof RAPIER.World>;
   private readonly layout: PrisonLayout;
+  private readonly pickups: PickupSystem;
   private readonly guard: Character;
   private readonly prisoner: Character;
   private readonly hiredGuards: Character[] = [];
@@ -67,27 +70,31 @@ export class Game {
     this.callbacks = callbacks;
     this.money = STARTING_MONEY[difficulty];
 
-    this.scene.background = new THREE.Color(0x0a1116);
-    this.scene.fog = new THREE.Fog(0x0a1116, 28, 55);
+    this.scene.background = new THREE.Color(0x101719);
+    this.scene.fog = new THREE.Fog(0x101719, 34, 68);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = true;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.toneMappingExposure = 1.16;
+    this.renderer.setClearColor(0x101719, 1);
 
     this.camera = new THREE.OrthographicCamera(-15, 15, 11.25, -11.25, 0.1, 100);
     this.camera.up.set(0, 0, -1);
-    this.camera.position.set(0, 32, 0.001);
+    this.camera.position.set(0, 31, 12.5);
     this.camera.lookAt(0, 0, 0);
 
-    this.scene.add(new THREE.HemisphereLight(0xc9e0e5, 0x253139, 2.0));
-    const keyLight = new THREE.DirectionalLight(0xffe4c2, 2.5);
-    keyLight.position.set(-7, 16, 8);
+    this.scene.add(new THREE.HemisphereLight(0xd9dfd7, 0x26302e, 1.65));
+    const keyLight = new THREE.DirectionalLight(0xf2dfc0, 2.15);
+    keyLight.position.set(-9, 19, 11);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.mapSize.set(3072, 3072);
+    keyLight.shadow.bias = -0.00018;
+    keyLight.shadow.normalBias = 0.025;
     keyLight.shadow.camera.left = -16;
     keyLight.shadow.camera.right = 16;
     keyLight.shadow.camera.top = 12;
@@ -96,6 +103,8 @@ export class Game {
 
     this.physics = new RAPIER.World({ x: 0, y: 0, z: 0 });
     this.layout = new PrisonLayout(this.scene, this.physics, difficulty);
+    new EnvironmentDetails(this.scene);
+    this.pickups = new PickupSystem(this.physics, this.scene);
     this.guard = new Character(this.physics, this.scene, "guard", -5.7, 6.8, "PLAYER GUARD");
     this.prisoner = new Character(this.physics, this.scene, "prisoner", -9.2, -3.6, "AI PRISONER");
 
@@ -172,10 +181,12 @@ export class Game {
     if (this.keys.has("d") || this.keys.has("arrowright")) x += 1;
 
     this.guard.setPlayerMovement(x, z);
+    this.pickups.applyGravity(delta);
     this.physics.step();
     this.guard.update(delta);
     this.prisoner.update(delta, true);
     for (const npc of this.hiredGuards) npc.update(delta);
+    this.pickups.update();
 
     const prisonerPosition = this.prisoner.position;
     this.prisonerAlert = !this.hasEscaped && prisonerPosition.x > 9.6 && Math.abs(prisonerPosition.z) < 2.6;
@@ -193,7 +204,7 @@ export class Game {
     this.camera.position.x = this.cameraTarget.x;
     this.camera.position.z = this.cameraTarget.z + 0.001;
     this.camera.lookAt(this.cameraTarget.x, 0, this.cameraTarget.z);
-    const targetZoom = this.cameraPreset === "cell" ? 1.72 : 1;
+    const targetZoom = this.cameraPreset === "cell" ? 1.85 : 1;
     this.camera.zoom += (targetZoom - this.camera.zoom) * Math.min(delta * 3.5, 1);
     this.camera.updateProjectionMatrix();
 
@@ -215,6 +226,11 @@ export class Game {
         this.callbacks.onEvent(`ИИ осматривает «${action.target}»: ${action.narration}`);
         break;
       case "interact": {
+        const picked = this.pickups.pickupNearest(this.prisoner, 2.4, action.target);
+        if (picked) {
+          this.callbacks.onEvent(`ИИ наклоняется и подбирает: ${picked}.`, "success");
+          break;
+        }
         const position = this.prisoner.position;
         const directOpen = this.layout.toggleDoorNear(action.target, position.x, position.z, 2.4);
         const nearest = directOpen === null
@@ -241,12 +257,17 @@ export class Game {
   }
 
   private interactAsGuard(): void {
+    const picked = this.pickups.pickupNearest(this.guard);
+    if (picked) {
+      this.callbacks.onEvent(`Охранник подбирает ${picked}: наклоняется, захватывает предмет и поднимает его.`, "success");
+      return;
+    }
     const position = this.guard.position;
     const door = this.layout.toggleNearestDoor(position.x, position.z, 2.1);
     if (door) {
       this.callbacks.onEvent(`Охранник ${door.open ? "открыл" : "закрыл"} дверь ${door.id}.`, "success");
     } else {
-      this.callbacks.onEvent("Рядом нет двери для взаимодействия.");
+      this.callbacks.onEvent("Рядом нет предмета или двери для взаимодействия.");
     }
   }
 
@@ -308,7 +329,7 @@ export class Game {
     await this.turnController.takeTurn({
       difficulty: this.difficulty,
       prisoner: { x: position.x, z: position.z, status: "в камере" },
-      visibleObjects: ["cell-door", "ventilation", "bed", "sink"],
+      visibleObjects: ["cell-door", "ventilation", "bed", "sink", "keycard", "wrench", "canteen"],
       recentEvents: [this.lastAction],
     });
   }
@@ -343,6 +364,7 @@ export class Game {
     window.removeEventListener("resize", this.resize);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
+    this.pickups.dispose();
     this.guard.dispose();
     this.prisoner.dispose();
     this.hiredGuards.forEach((guard) => guard.dispose());
