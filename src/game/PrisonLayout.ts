@@ -118,9 +118,9 @@ export class PrisonLayout {
     if (difficulty === "special") return;
 
     // Black Dolphin: one more staggered barrier and a narrow checkpoint.
-    this.wall(-6.5, -3.2, 11, 0.34, 0x3e4c52);
-    this.wall(6.5, -3.2, 11, 0.34, 0x3e4c52);
-    this.addDoor("checkpoint-three", 0, -3.2, 1.2, 0.34);
+    this.wall(-6.5, -0.2, 11, 0.34, 0x3e4c52);
+    this.wall(6.5, -0.2, 11, 0.34, 0x3e4c52);
+    this.addDoor("checkpoint-three", 0, -0.2, 1.2, 0.34);
   }
 
   private buildFurniture(): void {
