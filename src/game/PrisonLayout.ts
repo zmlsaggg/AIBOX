@@ -78,55 +78,57 @@ export class PrisonLayout {
   }
 
   private buildCells(): void {
-    // Cell block: a controlled central corridor with two doors.
-    this.wall(-7.0, -1.1, 9.6, 0.32);
-    this.wall(4.7, -1.1, 10.5, 0.32);
-    this.wall(-7.0, -7.25, 0.32, 3.7);
-    this.wall(-7.0, -2.95, 0.32, 3.4);
-    this.addDoor("west-cell-door", -7.0, -5.05, 0.16, 1.6);
-    this.wall(-3.7, -7.1, 6.4, 0.32);
-    this.wall(0.2, -5.1, 0.32, 7.8);
-    this.wall(4.7, -5.1, 0.32, 7.8);
-    this.wall(8.8, -5.1, 0.32, 7.8);
+    // Main north/south checkpoint. The door exactly fills the wall opening.
+    this.wall(-6.5, -1.1, 11, 0.32);
+    this.wall(6.5, -1.1, 11, 0.32);
+    this.addDoor("cell-door", 0, -1.1, 2, 0.32);
 
-    this.addDoor("cell-door", -1.5, -1.1, 1.65, 0.16);
-    this.addDoor("inner-door", 2.45, -1.1, 1.65, 0.16);
+    // Starter cell door on the west partition.
+    this.wall(-7, -7.45, 0.32, 3.1);
+    this.wall(-7, -2.8, 0.32, 3.1);
+    this.addDoor("west-cell-door", -7, -5.125, 0.32, 1.55);
 
-    // A small guard/control room on the south-west side.
-    this.wall(-7.4, 3.1, 0.32, 5.0, 0x485a61);
-    this.wall(-4.8, 5.5, 5.4, 0.32, 0x485a61);
-    this.addDoor("control-door", -4.8, 3.0, 1.5, 0.16);
+    // Internal dividers end before the checkpoint, leaving a route around them.
+    this.wall(0.2, -5.5, 0.32, 7);
+    this.wall(4.7, -5.5, 0.32, 7);
+    this.wall(8.8, -5.5, 0.32, 7);
+
+    // A small guard/control booth with a proper doorway in its south wall.
+    this.wall(-7.4, 3.1, 0.32, 5, 0x485a61);
+    this.wall(-6.9, 5.5, 1.2, 0.32, 0x485a61);
+    this.wall(-3.0, 5.5, 3.0, 0.32, 0x485a61);
+    this.addDoor("control-door", -5.4, 5.5, 1.8, 0.32);
   }
 
   private buildDifficultyModifiers(difficulty: PrisonDifficulty): void {
     if (difficulty === "standard") return;
 
-    // Every higher tier adds real colliders and additional choke points.
+    // Strict and above: first physical checkpoint across the lower corridor.
     this.wall(-6.5, 3.45, 11, 0.34, 0x4d5c62);
     this.wall(6.5, 3.45, 11, 0.34, 0x4d5c62);
-    this.addDoor("checkpoint-one", 0, 3.45, 1.25, 0.18);
+    this.addDoor("checkpoint-one", 0, 3.45, 2, 0.34);
 
     if (difficulty === "strict") return;
 
-    this.wall(6.1, 6.0, 11.8, 0.32, 0x46555b);
-    this.wall(1.8, 7.3, 0.32, 3.1, 0x46555b);
-    this.addDoor("checkpoint-two", 0.7, 6.0, 1.35, 0.18);
+    // Special: another perimeter layer with its own gate.
+    this.wall(-6.5, 1.0, 11, 0.34, 0x46555b);
+    this.wall(6.5, 1.0, 11, 0.34, 0x46555b);
+    this.addDoor("checkpoint-two", 0, 1.0, 2, 0.34);
 
     if (difficulty === "special") return;
 
-    // Black Dolphin adds a final staggered internal perimeter.
-    this.wall(-1.9, 5.0, 0.32, 4.8, 0x3e4c52);
-    this.wall(4.1, 1.6, 0.32, 3.8, 0x3e4c52);
-    this.wall(6.7, -3.0, 4.1, 0.32, 0x3e4c52);
-    this.addDoor("checkpoint-three", 4.1, -0.35, 0.18, 1.35);
+    // Black Dolphin: one more staggered barrier and a narrow checkpoint.
+    this.wall(-6.5, -3.2, 11, 0.34, 0x3e4c52);
+    this.wall(6.5, -3.2, 11, 0.34, 0x3e4c52);
+    this.addDoor("checkpoint-three", 0, -3.2, 1.2, 0.34);
   }
 
   private buildFurniture(): void {
     this.prop("BED", -9.2, -5.1, 1.25, 0.48, 0.32, 0x65747a);
     this.prop("SINK", -8.8, -2.5, 0.48, 0.35, 0.45, 0x85969a);
-    this.prop("VENT", 0.2, -7.7, 0.9, 0.14, 0.65, 0x87959a);
+    this.prop("VENT", 2.3, -7.7, 0.9, 0.14, 0.65, 0x87959a);
     this.prop("TERMINAL", -8.9, 5.4, 0.6, 0.8, 0.45, 0x345968);
-    this.prop("DESK", -6.4, 5.6, 1.35, 0.65, 0.42, 0x665847);
+    this.prop("DESK", -3.2, 6.7, 1.35, 0.65, 0.42, 0x665847);
   }
 
   private prop(name: string, x: number, z: number, width: number, depth: number, height: number, color: number): void {
@@ -139,6 +141,9 @@ export class PrisonLayout {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     this.scene.add(mesh);
+
+    const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, height / 2, z));
+    this.world.createCollider(RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2), body);
   }
 
   private addDoor(id: string, x: number, z: number, width: number, depth: number): void {
