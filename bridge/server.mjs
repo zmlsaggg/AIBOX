@@ -19,6 +19,7 @@ const PROVIDERS = {
 };
 let context;
 let page;
+const providerPages = new Map();
 let activeProvider = null;
 let busy = false;
 let activeAbort = null;
@@ -47,8 +48,14 @@ async function selectProvider(id) {
   const provider = PROVIDERS[id];
   if (!provider) throw new Error("Unknown provider");
   await ensureBrowser();
-  if (!page || page.isClosed()) page = await context.newPage();
-  if (!page.url().startsWith(provider.url)) await page.goto(provider.url, { waitUntil: "domcontentloaded", timeout: 45000 });
+  page = providerPages.get(id);
+  if (!page || page.isClosed()) {
+    page = await context.newPage();
+    providerPages.set(id, page);
+    await page.goto(provider.url, { waitUntil: "domcontentloaded", timeout: 45000 });
+  } else if (!page.url().startsWith(provider.url)) {
+    await page.goto(provider.url, { waitUntil: "domcontentloaded", timeout: 45000 });
+  }
   activeProvider = id;
   return { provider: id, url: page.url(), title: await page.title() };
 }
