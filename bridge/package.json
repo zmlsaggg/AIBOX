@@ -1,0 +1,7 @@
+{
+  "name": "aibox-browser-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.mjs", "install-browser": "playwright install chromium" },
+  "dependencies": { "playwright": "^1.56.1" }
+}
