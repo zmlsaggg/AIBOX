@@ -174,6 +174,12 @@ export class PrisonLayout {
     return door.open;
   }
 
+  toggleDoorNear(id: string, x: number, z: number, maxDistance = 2.4): boolean | null {
+    const door = this.doors.get(id);
+    if (!door || Math.hypot(door.position.x - x, door.position.z - z) > maxDistance) return null;
+    return this.toggleDoor(id);
+  }
+
   toggleNearestDoor(x: number, z: number, maxDistance = 2.2): { id: string; open: boolean } | null {
     let closest: Door | null = null;
     let closestDistance = maxDistance;
