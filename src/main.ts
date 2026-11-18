@@ -210,7 +210,7 @@ $("#start-button").addEventListener("click", async () => {
       onEvent: addEvent,
       onTurnState: setTurnState,
       onStats: updateStats,
-    });
+    }, browserConnected ? browserProvider : new DemoProvider());
     $("#start-overlay").classList.add("hidden");
     $("#facility-status").textContent = "ACTIVE";
     addEvent(`Facility initialized: ${selectedDifficulty.toUpperCase()}.`, "success");
@@ -246,7 +246,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) =
         if (!game.buyInterruptCharge()) addEvent("Insufficient budget or charge limit reached.", "warning");
         break;
       case "next-turn":
-        await game.takeDemoTurn();
+        await game.takeAITurn();
         break;
       case "interrupt":
         if (!game.useInterruptCharge()) addEvent("No active prompt or no interrupt charges.", "warning");
