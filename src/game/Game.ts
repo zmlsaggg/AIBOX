@@ -213,10 +213,13 @@ export class Game {
         break;
       case "interact": {
         const position = this.prisoner.position;
-        const door = this.layout.toggleNearestDoor(position.x, position.z, 2.4);
+        const directOpen = this.layout.toggleDoor(action.target);
+        const nearest = directOpen === null
+          ? this.layout.toggleNearestDoor(position.x, position.z, 2.4)
+          : { id: action.target, open: directOpen };
         this.callbacks.onEvent(
-          door ? `ИИ взаимодействует с дверью ${door.id}: ${door.open ? "открыта" : "закрыта"}` : `ИИ пытается взаимодействовать с «${action.target}»: ${action.narration}`,
-          door?.open ? "warning" : "normal",
+          nearest ? `ИИ взаимодействует с дверью ${nearest.id}: ${nearest.open ? "открыта" : "закрыта"}` : `ИИ пытается взаимодействовать с «${action.target}»: ${action.narration}`,
+          nearest?.open ? "warning" : "normal",
         );
         break;
       }
