@@ -261,11 +261,31 @@ export class PrisonLayout {
       new THREE.BoxGeometry(Math.max(0.12, width - 0.2), 0.12, depth + 0.025),
       this.materials.darkMetal,
     );
-    inset.position.set(x, 1.35, z);
-    this.scene.add(inset);
+    inset.position.set(0, 0.32, 0);
+    mesh.add(inset);
     const indicator = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, depth + 0.05), this.materials.amber);
-    indicator.position.set(x, 1.85, z);
-    this.scene.add(indicator);
+    indicator.position.set(0, 0.82, 0);
+    mesh.add(indicator);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(Math.min(0.58, width * 0.42), 0.18, depth + 0.04), this.materials.darkMetal);
+    slot.position.set(0, 0.35, 0);
+    mesh.add(slot);
+    if (width > 0.8) {
+      const barCount = Math.max(3, Math.floor(width * 3));
+      for (let index = 0; index < barCount; index += 1) {
+        const barX = -width * 0.38 + (index / (barCount - 1)) * width * 0.76;
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.3, depth + 0.06), this.materials.metal);
+        bar.position.set(barX, 0.35, 0);
+        mesh.add(bar);
+      }
+    }
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.2, 0.075), this.materials.trim);
+    handle.position.set(width * 0.34, 0.88, depth > width ? 0.08 : 0);
+    mesh.add(handle);
+    for (const side of [-1, 1]) {
+      const bolt = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), this.materials.trim);
+      bolt.position.set(side * Math.max(0.08, width * 0.42), 0.72, 0.03);
+      mesh.add(bolt);
+    }
 
     const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, height / 2, z));
     const collider = this.world.createCollider(RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2), body);
