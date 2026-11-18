@@ -67,16 +67,18 @@ export class Game {
     this.callbacks = callbacks;
     this.money = STARTING_MONEY[difficulty];
 
-    this.scene.background = new THREE.Color(0x0a1116);
-    this.scene.fog = new THREE.Fog(0x0a1116, 28, 55);
+    this.scene.background = new THREE.Color(0x101719);
+    this.scene.fog = new THREE.Fog(0x101719, 34, 68);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;\n    this.renderer.shadowMap.autoUpdate = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = true;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.16;\n    this.renderer.setClearColor(0x101719, 1);
+    this.renderer.toneMappingExposure = 1.16;
+    this.renderer.setClearColor(0x101719, 1);
 
     this.camera = new THREE.OrthographicCamera(-15, 15, 11.25, -11.25, 0.1, 100);
     this.camera.up.set(0, 0, -1);
@@ -87,7 +89,9 @@ export class Game {
     const keyLight = new THREE.DirectionalLight(0xf2dfc0, 2.15);
     keyLight.position.set(-9, 19, 11);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(3072, 3072);\n    keyLight.shadow.bias = -0.00018;\n    keyLight.shadow.normalBias = 0.025;
+    keyLight.shadow.mapSize.set(3072, 3072);
+    keyLight.shadow.bias = -0.00018;
+    keyLight.shadow.normalBias = 0.025;
     keyLight.shadow.camera.left = -16;
     keyLight.shadow.camera.right = 16;
     keyLight.shadow.camera.top = 12;
