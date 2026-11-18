@@ -79,7 +79,9 @@ export class PrisonLayout {
     // Cell block: a controlled central corridor with two doors.
     this.wall(-7.0, -1.1, 9.6, 0.32);
     this.wall(4.7, -1.1, 10.5, 0.32);
-    this.wall(-7.0, -5.2, 0.32, 7.9);
+    this.wall(-7.0, -7.25, 0.32, 3.7);
+    this.wall(-7.0, -2.95, 0.32, 3.4);
+    this.addDoor("west-cell-door", -7.0, -5.05, 0.16, 1.6);
     this.wall(-3.7, -7.1, 6.4, 0.32);
     this.wall(0.2, -5.1, 0.32, 7.8);
     this.wall(4.7, -5.1, 0.32, 7.8);
