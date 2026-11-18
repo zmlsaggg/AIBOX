@@ -29,7 +29,7 @@ app.innerHTML = `
           </div>
         </div>
         <div class="world-stage">
-          <canvas id="world-canvas" aria-label="Top-down 3D prison simulation"></canvas>
+          <canvas id="world-canvas" aria-label="Angled top-down 3D prison simulation"></canvas>\n          <div class="map-compass" aria-hidden="true"><span>N</span><i></i><small>SECTOR MAP</small></div>\n          <div class="map-landmarks" aria-hidden="true"><span><i class="landmark-cell"></i> CELL BLOCK</span><span><i class="landmark-control"></i> CONTROL ROOM</span><span><i class="landmark-exit"></i> PERIMETER EXIT</span></div>
           <div class="scene-coordinates">SECTOR 04 · 59°N / 24°E</div>
           <div class="scene-status"><span class="live-dot"></span> SIMULATION LIVE</div>
           <div class="scene-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> MOVE <i></i> <kbd>E</kbd> DOOR <i></i> <kbd>SPACE</kbd> ALARM</div>

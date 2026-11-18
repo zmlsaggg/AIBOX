@@ -16,6 +16,18 @@ interface Door {
 export class PrisonLayout {
   private readonly doors = new Map<string, Door>();
   private cameraMarkers = 0;
+  private readonly materials = {
+    concrete: new THREE.MeshStandardMaterial({ color: 0x59666a, roughness: 0.94 }),
+    concreteDark: new THREE.MeshStandardMaterial({ color: 0x39464a, roughness: 0.96 }),
+    trim: new THREE.MeshStandardMaterial({ color: 0x879294, roughness: 0.72, metalness: 0.12 }),
+    floor: new THREE.MeshStandardMaterial({ color: 0x333d3e, roughness: 0.92 }),
+    tileA: new THREE.MeshStandardMaterial({ color: 0x3b4645, roughness: 0.88 }),
+    tileB: new THREE.MeshStandardMaterial({ color: 0x303b3c, roughness: 0.9 }),
+    metal: new THREE.MeshStandardMaterial({ color: 0x78888a, metalness: 0.72, roughness: 0.38 }),
+    darkMetal: new THREE.MeshStandardMaterial({ color: 0x202a2c, metalness: 0.6, roughness: 0.5 }),
+    amber: new THREE.MeshStandardMaterial({ color: 0xd39b55, emissive: 0x55300c, emissiveIntensity: 0.5 }),
+    light: new THREE.MeshStandardMaterial({ color: 0xd8d1b5, emissive: 0x8e8060, emissiveIntensity: 1.3 }),
+  };
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -27,31 +39,49 @@ export class PrisonLayout {
     this.buildCells();
     this.buildDifficultyModifiers(difficulty);
     this.buildFurniture();
+    this.buildEnvironmentalDetails();
   }
 
   private buildFloor(): void {
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(24, 18),
-      new THREE.MeshStandardMaterial({ color: 0x202a30, roughness: 0.94 }),
-    );
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 18), this.materials.floor);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    const grid = new THREE.GridHelper(24, 24, 0x35464d, 0x2a383e);
-    grid.position.y = 0.006;
-    this.scene.add(grid);
-
+    // Subtle worn concrete tile seams, replacing the debug-like grid.
+    for (let x = -11; x <= 11; x += 2) {
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.008, 18), this.materials.darkMetal);
+      seam.position.set(x, 0.008, 0);
+      this.scene.add(seam);
+    }
+    for (let z = -8; z <= 8; z += 2) {
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(24, 0.008, 0.018), this.materials.darkMetal);
+      seam.position.set(0, 0.009, z);
+      this.scene.add(seam);
+    }
     const floorBody = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -0.24, 0));
     this.world.createCollider(RAPIER.ColliderDesc.cuboid(12, 0.24, 9), floorBody);
+
+    this.floorMarking(-10.4, -7.9, 1.8, 0.12, 0x9d7650);
+    this.floorMarking(-10.4, -7.55, 0.12, 0.55, 0x9d7650);
+    this.floorMarking(10.4, 7.9, 1.8, 0.12, 0x9d7650);
+    this.floorMarking(10.4, 7.55, 0.12, 0.55, 0x9d7650);
+    this.floorMarking(0, 8.35, 5.5, 0.045, 0x637270);
+  }
+
+  private floorMarking(x: number, z: number, width: number, depth: number, color: number): void {
+    const mark = new THREE.Mesh(
+      new THREE.BoxGeometry(width, 0.012, depth),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.42 }),
+    );
+    mark.position.set(x, 0.018, z);
+    this.scene.add(mark);
   }
 
   private wall(x: number, z: number, width: number, depth: number, color = 0x59666b): void {
-    const height = 2.25;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(width, height, depth),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.88 }),
-    );
+    const height = 2.55;
+    const wallMaterial = color === 0x59666b ? this.materials.concrete : new THREE.MeshStandardMaterial({ color, roughness: 0.92 });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), wallMaterial);
     mesh.position.set(x, height / 2, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -60,12 +90,14 @@ export class PrisonLayout {
     const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, height / 2, z));
     this.world.createCollider(RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2), body);
 
-    const trim = new THREE.Mesh(
-      new THREE.BoxGeometry(width, 0.08, depth + 0.025),
-      new THREE.MeshStandardMaterial({ color: 0x91a0a3, roughness: 0.65 }),
-    );
-    trim.position.set(x, height + 0.015, z);
-    this.scene.add(trim);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(width + 0.04, 0.09, depth + 0.04), this.materials.trim);
+    cap.position.set(x, height + 0.035, z);
+    cap.castShadow = true;
+    this.scene.add(cap);
+
+    const lowerBand = new THREE.Mesh(new THREE.BoxGeometry(width + 0.025, 0.16, depth + 0.025), this.materials.concreteDark);
+    lowerBand.position.set(x, 0.18, z);
+    this.scene.add(lowerBand);
   }
 
   private buildOuterWalls(): void {
@@ -78,22 +110,18 @@ export class PrisonLayout {
   }
 
   private buildCells(): void {
-    // Main north/south checkpoint. The door exactly fills the wall opening.
     this.wall(-6.5, -1.1, 11, 0.32);
     this.wall(6.5, -1.1, 11, 0.32);
     this.addDoor("cell-door", 0, -1.1, 2, 0.32);
 
-    // Starter cell door on the west partition.
     this.wall(-7, -7.45, 0.32, 3.1);
     this.wall(-7, -2.8, 0.32, 3.1);
     this.addDoor("west-cell-door", -7, -5.125, 0.32, 1.55);
 
-    // Internal dividers end before the checkpoint, leaving a route around them.
     this.wall(0.2, -5.5, 0.32, 7);
     this.wall(4.7, -5.5, 0.32, 7);
     this.wall(8.8, -5.5, 0.32, 7);
 
-    // A small guard/control booth with a proper doorway in its south wall.
     this.wall(-7.4, 3.1, 0.32, 5, 0x485a61);
     this.wall(-6.9, 5.5, 1.2, 0.32, 0x485a61);
     this.wall(-3.0, 5.5, 3.0, 0.32, 0x485a61);
@@ -102,22 +130,14 @@ export class PrisonLayout {
 
   private buildDifficultyModifiers(difficulty: PrisonDifficulty): void {
     if (difficulty === "standard") return;
-
-    // Strict and above: first physical checkpoint across the lower corridor.
     this.wall(-6.5, 3.45, 11, 0.34, 0x4d5c62);
     this.wall(6.5, 3.45, 11, 0.34, 0x4d5c62);
     this.addDoor("checkpoint-one", 0, 3.45, 2, 0.34);
-
     if (difficulty === "strict") return;
-
-    // Special: another perimeter layer with its own gate.
     this.wall(-6.5, 1.0, 11, 0.34, 0x46555b);
     this.wall(6.5, 1.0, 11, 0.34, 0x46555b);
     this.addDoor("checkpoint-two", 0, 1.0, 2, 0.34);
-
     if (difficulty === "special") return;
-
-    // Black Dolphin: one more staggered barrier and a narrow checkpoint.
     this.wall(-6.5, -0.2, 11, 0.34, 0x3e4c52);
     this.wall(6.5, -0.2, 11, 0.34, 0x3e4c52);
     this.addDoor("checkpoint-three", 0, -0.2, 1.2, 0.34);
@@ -129,6 +149,89 @@ export class PrisonLayout {
     this.prop("VENT", 2.3, -7.7, 0.9, 0.14, 0.65, 0x87959a);
     this.prop("TERMINAL", -8.9, 5.4, 0.6, 0.8, 0.45, 0x345968);
     this.prop("DESK", -3.2, 6.7, 1.35, 0.65, 0.42, 0x665847);
+
+    // Cot mattress, blanket, pillow and sink bowl add readable room-scale detail.
+    this.decorBox(-9.2, 0.38, -5.1, 1.18, 0.12, 0.43, 0x9a9a8b);
+    this.decorBox(-9.2, 0.47, -5.32, 0.34, 0.09, 0.28, 0xc4c0ad);
+    this.decorBox(-9.2, 0.45, -4.93, 0.72, 0.035, 0.3, 0x526c70);
+    this.decorBox(-8.8, 0.48, -2.5, 0.42, 0.06, 0.29, 0xb3c0bc);
+    this.decorBox(-3.2, 0.87, 6.7, 1.2, 0.08, 0.55, 0x8c765d);
+    this.decorBox(-3.55, 0.94, 6.52, 0.18, 0.06, 0.18, 0x263a3b);
+  }
+
+  private buildEnvironmentalDetails(): void {
+    // Ceiling fixtures and their warm pools of light remain visible from the tactical camera.
+    for (const [x, z] of [[-9, -7.8], [-3.5, -4.5], [3.5, -4.5], [9, -7.8], [-8, 2], [1, 2], [8, 2], [-3, 7.7], [7, 7.7]] as const) {
+      const fixture = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.055, 0.22), this.materials.light);
+      fixture.position.set(x, 2.48, z);
+      this.scene.add(fixture);
+      const glow = new THREE.PointLight(0xd9cba8, 0.42, 5.2, 2);
+      glow.position.set(x, 2.25, z);
+      this.scene.add(glow);
+    }
+
+    // Security stripes, numbered sectors and wall-mounted equipment.
+    this.wallSign("CELL 01", -9.2, 2.42, -1.3);
+    this.wallSign("CONTROL", -5.1, 2.42, 5.1);
+    this.wallSign("CHECKPOINT", 2.4, 2.42, -1.3);
+    this.wallSign("EXIT", 10.7, 2.42, 0.8);
+    this.addWallPanel(-11.72, 1.35, 1.2, 0.48);
+    this.addWallPanel(11.72, 1.35, 1.2, 0.48);
+    this.addCameraAt(-10.9, -8.25);
+    this.addCameraAt(10.9, -8.25);
+    this.addCameraAt(10.9, 8.25);
+    this.addCameraAt(-10.9, 8.25);
+  }
+
+  private wallSign(text: string, x: number, y: number, z: number): void {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 64;
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.fillStyle = "#182326";
+      context.fillRect(0, 0, 256, 64);
+      context.strokeStyle = "#8c9a91";
+      context.lineWidth = 3;
+      context.strokeRect(3, 3, 250, 58);
+      context.fillStyle = "#d5c9a8";
+      context.font = "bold 26px monospace";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(text, 128, 33);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.25, 0.31),
+      new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }),
+    );
+    sign.position.set(x, y, z);
+    sign.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+    this.scene.add(sign);
+  }
+
+  private addWallPanel(x: number, y: number, z: number, width: number, height = 0.48): void {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.07, height, width), this.materials.darkMetal);
+    panel.position.set(x, y, z);
+    this.scene.add(panel);
+    const screen = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, height * 0.55, width * 0.62),
+      new THREE.MeshBasicMaterial({ color: 0x4caaa0 }),
+    );
+    screen.position.set(x + (x > 0 ? -0.045 : 0.045), y, z);
+    this.scene.add(screen);
+  }
+
+  private decorBox(x: number, y: number, z: number, width: number, height: number, depth: number, color: number): void {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(width, height, depth),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.86 }),
+    );
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.scene.add(mesh);
   }
 
   private prop(name: string, x: number, z: number, width: number, depth: number, height: number, color: number): void {
@@ -141,27 +244,51 @@ export class PrisonLayout {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     this.scene.add(mesh);
-
     const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, height / 2, z));
     this.world.createCollider(RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2), body);
   }
 
   private addDoor(id: string, x: number, z: number, width: number, depth: number): void {
-    const height = 1.95;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(width, height, depth),
-      new THREE.MeshStandardMaterial({ color: 0x82949a, metalness: 0.45, roughness: 0.52 }),
-    );
+    const height = 2.05;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), this.materials.metal);
     mesh.name = id;
     mesh.position.set(x, height / 2, z);
     mesh.castShadow = true;
+    mesh.receiveShadow = true;
     this.scene.add(mesh);
 
-    const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, height / 2, z));
-    const collider = this.world.createCollider(
-      RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2),
-      body,
+    const inset = new THREE.Mesh(
+      new THREE.BoxGeometry(Math.max(0.12, width - 0.2), 0.12, depth + 0.025),
+      this.materials.darkMetal,
     );
+    inset.position.set(0, 0.32, 0);
+    mesh.add(inset);
+    const indicator = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, depth + 0.05), this.materials.amber);
+    indicator.position.set(0, 0.82, 0);
+    mesh.add(indicator);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(Math.min(0.58, width * 0.42), 0.18, depth + 0.04), this.materials.darkMetal);
+    slot.position.set(0, 0.35, 0);
+    mesh.add(slot);
+    if (width > 0.8) {
+      const barCount = Math.max(3, Math.floor(width * 3));
+      for (let index = 0; index < barCount; index += 1) {
+        const barX = -width * 0.38 + (index / (barCount - 1)) * width * 0.76;
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.3, depth + 0.06), this.materials.metal);
+        bar.position.set(barX, 0.35, 0);
+        mesh.add(bar);
+      }
+    }
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.2, 0.075), this.materials.trim);
+    handle.position.set(width * 0.34, 0.88, depth > width ? 0.08 : 0);
+    mesh.add(handle);
+    for (const side of [-1, 1]) {
+      const bolt = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), this.materials.trim);
+      bolt.position.set(side * Math.max(0.08, width * 0.42), 0.72, 0.03);
+      mesh.add(bolt);
+    }
+
+    const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, height / 2, z));
+    const collider = this.world.createCollider(RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2), body);
     this.doors.set(id, { id, mesh, collider, open: false, position: new THREE.Vector3(x, 0, z) });
   }
 
@@ -197,24 +324,24 @@ export class PrisonLayout {
 
   addCameraMarker(): void {
     this.cameraMarkers += 1;
-    const positions = [
-      [-10.8, -8.1], [10.7, -8.1], [10.7, 7.9], [-10.7, 7.9], [0, -8.1],
-    ] as const;
+    const positions = [[-10.8, -8.1], [10.7, -8.1], [10.7, 7.9], [-10.7, 7.9], [0, -8.1]] as const;
     const [x, z] = positions[(this.cameraMarkers - 1) % positions.length];
+    this.addCameraAt(x, z);
+  }
 
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.15, 0.16, 14),
-      new THREE.MeshStandardMaterial({ color: 0x7b8d92, metalness: 0.7, roughness: 0.35 }),
-    );
-    base.position.set(x, 2.28, z);
-    this.scene.add(base);
-
+  private addCameraAt(x: number, z: number): void {
+    const mount = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.22), this.materials.darkMetal);
+    mount.position.set(x, 2.34, z);
+    this.scene.add(mount);
+    const housing = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10), this.materials.metal);
+    housing.position.set(x, 2.2, z + (z < 0 ? 0.1 : -0.1));
+    housing.scale.set(1.05, 0.72, 0.82);
+    this.scene.add(housing);
     const lens = new THREE.Mesh(
-      new THREE.SphereGeometry(0.13, 12, 10),
-      new THREE.MeshStandardMaterial({ color: 0x59d2c5, emissive: 0x154d48, roughness: 0.28 }),
+      new THREE.SphereGeometry(0.065, 12, 10),
+      new THREE.MeshStandardMaterial({ color: 0x60d3c5, emissive: 0x1d746c, emissiveIntensity: 1.1 }),
     );
-    lens.position.set(x, 2.18, z + 0.12);
-    lens.scale.set(1, 0.68, 0.7);
+    lens.position.set(x, 2.2, z + (z < 0 ? 0.22 : -0.22));
     this.scene.add(lens);
   }
 }

@@ -67,27 +67,31 @@ export class Game {
     this.callbacks = callbacks;
     this.money = STARTING_MONEY[difficulty];
 
-    this.scene.background = new THREE.Color(0x0a1116);
-    this.scene.fog = new THREE.Fog(0x0a1116, 28, 55);
+    this.scene.background = new THREE.Color(0x101719);
+    this.scene.fog = new THREE.Fog(0x101719, 34, 68);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = true;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.toneMappingExposure = 1.16;
+    this.renderer.setClearColor(0x101719, 1);
 
     this.camera = new THREE.OrthographicCamera(-15, 15, 11.25, -11.25, 0.1, 100);
     this.camera.up.set(0, 0, -1);
-    this.camera.position.set(0, 32, 0.001);
+    this.camera.position.set(0, 31, 12.5);
     this.camera.lookAt(0, 0, 0);
 
-    this.scene.add(new THREE.HemisphereLight(0xc9e0e5, 0x253139, 2.0));
-    const keyLight = new THREE.DirectionalLight(0xffe4c2, 2.5);
-    keyLight.position.set(-7, 16, 8);
+    this.scene.add(new THREE.HemisphereLight(0xd9dfd7, 0x26302e, 1.65));
+    const keyLight = new THREE.DirectionalLight(0xf2dfc0, 2.15);
+    keyLight.position.set(-9, 19, 11);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.mapSize.set(3072, 3072);
+    keyLight.shadow.bias = -0.00018;
+    keyLight.shadow.normalBias = 0.025;
     keyLight.shadow.camera.left = -16;
     keyLight.shadow.camera.right = 16;
     keyLight.shadow.camera.top = 12;
@@ -193,7 +197,7 @@ export class Game {
     this.camera.position.x = this.cameraTarget.x;
     this.camera.position.z = this.cameraTarget.z + 0.001;
     this.camera.lookAt(this.cameraTarget.x, 0, this.cameraTarget.z);
-    const targetZoom = this.cameraPreset === "cell" ? 1.72 : 1;
+    const targetZoom = this.cameraPreset === "cell" ? 1.85 : 1;
     this.camera.zoom += (targetZoom - this.camera.zoom) * Math.min(delta * 3.5, 1);
     this.camera.updateProjectionMatrix();
 
