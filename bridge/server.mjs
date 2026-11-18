@@ -81,6 +81,8 @@ async function generate(prompt, signal) {
       if (composer) break;
     }
     if (!composer) throw new Error("Composer not found. The provider UI may have changed or login is required.");
+    const beforeCount = await page.locator('[data-message-author-role="assistant"]').count();
+    const beforeText = beforeCount ? (await page.locator('[data-message-author-role="assistant"]').last().innerText().catch(() => "")) : "";
     await composer.fill(prompt);
     const sendCandidates = [
       page.locator('[data-testid="send-button"]'),
@@ -110,7 +112,8 @@ async function generate(prompt, signal) {
         lastText = text;
       }
       const generating = await stop.first().isVisible().catch(() => false);
-      if (lastText && !generating && stable >= 3) return lastText;
+      const isNewResponse = count > beforeCount || lastText !== beforeText;
+      if (lastText && isNewResponse && !generating && stable >= 3) return lastText;
       await page.waitForTimeout(500);
     }
     throw new Error("Timed out waiting for the model response");
@@ -143,7 +146,7 @@ const server = createServer(async (req, res) => {
       const { prompt } = JSON.parse(body || "{}");
       if (typeof prompt !== "string" || prompt.length > 12000) return json(res, 400, { error: "Prompt must be a string up to 12,000 characters" }, origin);
       const controller = new AbortController();
-      req.on("close", () => { if (!res.writableEnded) controller.abort(); });
+      res.on("close", () => { if (!res.writableEnded) controller.abort(); });
       const response = await generate(prompt, controller.signal);
       return json(res, 200, { response, provider: activeProvider }, origin);
     }
