@@ -92,7 +92,7 @@ export class Game {
     this.scene.add(keyLight);
 
     this.physics = new RAPIER.World({ x: 0, y: 0, z: 0 });
-    this.layout = new PrisonLayout(this.scene, this.physics);
+    this.layout = new PrisonLayout(this.scene, this.physics, difficulty);
     this.guard = new Character(this.physics, this.scene, "guard", -5.7, 6.8, "PLAYER GUARD");
     this.prisoner = new Character(this.physics, this.scene, "prisoner", -9.2, -3.6, "AI PRISONER");
 
@@ -249,6 +249,15 @@ export class Game {
     this.cameras += 1;
     this.layout.addCameraMarker();
     this.callbacks.onEvent("Установлена новая камера наблюдения.", "success");
+    this.emitStats();
+    return true;
+  }
+
+  buyInterruptCharge(): boolean {
+    if (this.money < 500 || this.interruptCharges >= 5) return false;
+    this.money -= 500;
+    this.interruptCharges += 1;
+    this.callbacks.onEvent("Куплен дополнительный заряд удаления промпта.", "success");
     this.emitStats();
     return true;
   }
