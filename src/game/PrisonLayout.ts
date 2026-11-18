@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
+import type { PrisonDifficulty } from "../ai/contracts";
 
 type PhysicsWorld = InstanceType<typeof RAPIER.World>;
 type Collider = ReturnType<PhysicsWorld["createCollider"]>;
@@ -19,10 +20,12 @@ export class PrisonLayout {
   constructor(
     private readonly scene: THREE.Scene,
     private readonly world: PhysicsWorld,
+    difficulty: PrisonDifficulty,
   ) {
     this.buildFloor();
     this.buildOuterWalls();
     this.buildCells();
+    this.buildDifficultyModifiers(difficulty);
     this.buildFurniture();
   }
 
@@ -89,6 +92,29 @@ export class PrisonLayout {
     this.wall(-7.4, 3.1, 0.32, 5.0, 0x485a61);
     this.wall(-4.8, 5.5, 5.4, 0.32, 0x485a61);
     this.addDoor("control-door", -4.8, 3.0, 1.5, 0.16);
+  }
+
+  private buildDifficultyModifiers(difficulty: PrisonDifficulty): void {
+    if (difficulty === "standard") return;
+
+    // Every higher tier adds real colliders and additional choke points.
+    this.wall(-6.5, 3.45, 11, 0.34, 0x4d5c62);
+    this.wall(6.5, 3.45, 11, 0.34, 0x4d5c62);
+    this.addDoor("checkpoint-one", 0, 3.45, 1.25, 0.18);
+
+    if (difficulty === "strict") return;
+
+    this.wall(6.1, 6.0, 11.8, 0.32, 0x46555b);
+    this.wall(1.8, 7.3, 0.32, 3.1, 0x46555b);
+    this.addDoor("checkpoint-two", 0.7, 6.0, 1.35, 0.18);
+
+    if (difficulty === "special") return;
+
+    // Black Dolphin adds a final staggered internal perimeter.
+    this.wall(-1.9, 5.0, 0.32, 4.8, 0x3e4c52);
+    this.wall(4.1, 1.6, 0.32, 3.8, 0x3e4c52);
+    this.wall(6.7, -3.0, 4.1, 0.32, 0x3e4c52);
+    this.addDoor("checkpoint-three", 4.1, -0.35, 0.18, 1.35);
   }
 
   private buildFurniture(): void {
