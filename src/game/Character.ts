@@ -44,10 +44,16 @@ export class Character {
     head.castShadow = true;
     this.visual.add(head);
 
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), darkMaterial);
-    cap.position.set(0, 1.22, -0.015);
-    cap.scale.set(1.05, 0.56, 1.05);
-    this.visual.add(cap);
+    if (role === "guard") {
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), darkMaterial);
+      cap.position.set(0, 1.22, -0.015);
+      cap.scale.set(1.05, 0.56, 1.05);
+      this.visual.add(cap);
+    } else {
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.176, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), darkMaterial);
+      hair.position.set(0, 1.205, -0.025);
+      this.visual.add(hair);
+    }
 
     for (const side of [-1, 1]) {
       const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.32, 4, 8), uniform);
@@ -145,8 +151,8 @@ export class Character {
       this.gaitPhase += delta * Math.min(11, 5 + speed * 1.35);
       const swing = Math.sin(this.gaitPhase) * Math.min(0.58, speed * 0.14);
       this.animatedLimbs[0].rotation.x = -swing * 0.72;
-      this.animatedLimbs[1].rotation.x = swing * 0.72;
-      this.animatedLimbs[2].rotation.x = swing;
+      this.animatedLimbs[1].rotation.x = swing;
+      this.animatedLimbs[2].rotation.x = swing * 0.72;
       this.animatedLimbs[3].rotation.x = -swing;
       this.visual.position.y = Math.abs(Math.sin(this.gaitPhase * 2)) * 0.022;
     } else {
