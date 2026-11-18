@@ -70,7 +70,9 @@ export class PrisonLayout {
 
   private buildOuterWalls(): void {
     this.wall(-12, 0, 0.42, 18.4, 0x46545b);
-    this.wall(12, 0, 0.42, 18.4, 0x46545b);
+    this.wall(12, -5.6, 0.42, 6.8, 0x46545b);
+    this.wall(12, 5.6, 0.42, 6.8, 0x46545b);
+    this.addDoor("outer-exit", 12, 0, 0.42, 4.4);
     this.wall(0, -9, 24.4, 0.42, 0x46545b);
     this.wall(0, 9, 24.4, 0.42, 0x46545b);
   }
