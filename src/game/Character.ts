@@ -22,8 +22,8 @@ export class Character {
     z: number,
     label: string,
   ) {
-    const color = role === "guard" ? 0x66b7ff : 0xe7b66a;
-    const dark = role === "guard" ? 0x193b58 : 0x57371e;
+    const color = role === "guard" ? 0x405860 : 0x9a7957;
+    const dark = role === "guard" ? 0x202c31 : 0x493a2e;
 
     this.visual = new THREE.Group();
     this.visual.name = label;
@@ -55,12 +55,25 @@ export class Character {
       arm.rotation.z = side * -0.12;
       arm.castShadow = true;
       this.visual.add(arm);
+      this.animatedLimbs.push(arm);
 
       const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.28, 4, 8), darkMaterial);
       leg.position.set(side * 0.105, 0.27, 0);
       leg.castShadow = true;
       this.visual.add(leg);
+      this.animatedLimbs.push(leg);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.09, 0.24), boot);
+      shoe.position.set(side * 0.105, 0.13, 0.055);
+      shoe.castShadow = true;
+      this.visual.add(shoe);
     }
+
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.225, 0.225, 0.075, 16), darkMaterial);
+    belt.position.y = 0.53;
+    this.visual.add(belt);
+    const patch = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.13, 0.025), accent);
+    patch.position.set(0.12, 0.78, 0.21);
+    this.visual.add(patch);
 
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.39, 24),
@@ -126,8 +139,19 @@ export class Character {
     const p = this.body.translation();
     this.visual.position.set(p.x, 0, p.z);
     const velocity = this.body.linvel();
-    if (Math.hypot(velocity.x, velocity.z) > 0.12) {
+    const speed = Math.hypot(velocity.x, velocity.z);
+    if (speed > 0.12) {
       this.visual.rotation.y = Math.atan2(velocity.x, velocity.z);
+      this.gaitPhase += delta * Math.min(11, 5 + speed * 1.35);
+      const swing = Math.sin(this.gaitPhase) * Math.min(0.58, speed * 0.14);
+      this.animatedLimbs[0].rotation.x = -swing * 0.72;
+      this.animatedLimbs[1].rotation.x = swing * 0.72;
+      this.animatedLimbs[2].rotation.x = swing;
+      this.animatedLimbs[3].rotation.x = -swing;
+      this.visual.position.y = Math.abs(Math.sin(this.gaitPhase * 2)) * 0.022;
+    } else {
+      for (const limb of this.animatedLimbs) limb.rotation.x = THREE.MathUtils.damp(limb.rotation.x, 0, delta, 12);
+      this.visual.position.y = THREE.MathUtils.damp(this.visual.position.y, 0, delta, 10);
     }
   }
 
