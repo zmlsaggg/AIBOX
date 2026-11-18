@@ -4,7 +4,7 @@ import { Character } from "./Character";
 import { PrisonLayout } from "./PrisonLayout";
 import { DemoProvider } from "../ai/DemoProvider";
 import { TurnController, type TurnState } from "../ai/TurnController";
-import type { PrisonerAction, PrisonDifficulty, TurnResult } from "../ai/contracts";
+import type { PrisonDifficulty, TurnResult } from "../ai/contracts";
 
 export interface GameCallbacks {
   onEvent: (message: string, tone?: "normal" | "warning" | "success") => void;
