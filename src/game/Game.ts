@@ -190,6 +190,9 @@ export class Game {
     this.camera.position.x = this.cameraTarget.x;
     this.camera.position.z = this.cameraTarget.z + 0.001;
     this.camera.lookAt(this.cameraTarget.x, 0, this.cameraTarget.z);
+    const targetZoom = this.cameraPreset === "cell" ? 1.72 : 1;
+    this.camera.zoom += (targetZoom - this.camera.zoom) * Math.min(delta * 3.5, 1);
+    this.camera.updateProjectionMatrix();
 
     this.renderer.render(this.scene, this.camera);
     this.animationFrame = requestAnimationFrame(this.loop);
