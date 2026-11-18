@@ -1,5 +1,7 @@
 import { Game, type GameStats } from "./game/Game";
 import type { PrisonDifficulty } from "./ai/contracts";
+import { BrowserProvider, type BrowserProviderId } from "./ai/BrowserProvider";
+import { DemoProvider } from "./ai/DemoProvider";
 import "./style.css";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -65,6 +67,22 @@ app.innerHTML = `
             <div class="ai-card-top"><div class="avatar-bot">AI</div><div><b>SUBJECT 001</b><small id="provider-name">LOCAL DEMO PROVIDER</small></div><span class="status-pill" id="ai-state">IDLE</span></div>
             <div class="prompt-progress"><span id="prompt-progress"></span></div>
             <p id="ai-detail">The prisoner is waiting for an instruction cycle.</p>
+            <div class="browser-session-controls">
+              <label>AI WEBSITE
+                <select id="browser-provider">
+                  <option value="chatgpt">ChatGPT</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="qwen">Qwen Chat</option>
+                  <option value="gemini">Gemini</option>
+                  <option value="claude">Claude</option>
+                </select>
+              </label>
+              <label>LOCAL PAIRING TOKEN
+                <input id="bridge-token" type="password" autocomplete="off" placeholder="Paste token from bridge terminal">
+              </label>
+              <button class="connect-browser-button" id="connect-browser">CONNECT BROWSER SESSION</button>
+              <small id="browser-connection-status">Not connected · local demo remains available</small>
+            </div>
             <div class="ai-actions">
               <button class="primary-button" data-action="next-turn">RUN AI TURN <span>↗</span></button>
               <button class="interrupt-button" id="interrupt-button" data-action="interrupt" disabled title="Cancel the current prompt">ϟ <span>DELETE</span><b id="charge-count">1</b></button>
@@ -103,6 +121,8 @@ app.innerHTML = `
 `;
 
 let game: Game | null = null;
+const browserProvider = new BrowserProvider();
+let browserConnected = false;
 let selectedDifficulty: PrisonDifficulty = "standard";
 let eventNumber = 0;
 
@@ -136,6 +156,8 @@ function updateStats(stats: GameStats): void {
   $("#turn-stat").textContent = String(stats.turn);
   $("#charge-count").textContent = String(stats.interruptCharges);
   $("#footer-difficulty").textContent = stats.difficulty.toUpperCase().replace("-", " ");
+  $("#provider-name").textContent = browserConnected ? browserProvider.selectedProvider.toUpperCase() : "LOCAL DEMO PROVIDER";
+  document.querySelector(".demo-label")!.textContent = browserConnected ? browserProvider.selectedProvider.toUpperCase() : "LOCAL DEMO";
   if (stats.alarmCooldown > 0) {
     $("#alarm-caption").textContent = `Alarm cooldown: ${stats.alarmCooldown}s`;
   } else {
@@ -153,6 +175,31 @@ function setTurnState(state: string, detail?: string): void {
   $("#prompt-progress").classList.toggle("running", running);
   $("#facility-status").textContent = running ? "AI THINKING" : "ACTIVE";
 }
+
+$("#connect-browser").addEventListener("click", async () => {
+  const button = $("#connect-browser");
+  const status = $("#browser-connection-status");
+  const selected = $("#browser-provider") as HTMLSelectElement;
+  const token = ($("#bridge-token") as HTMLInputElement).value;
+  button.setAttribute("disabled", "true");
+  status.textContent = "Opening browser and checking session…";
+  try {
+    browserProvider.configure(token, selected.value as BrowserProviderId);
+    const detail = await browserProvider.connect();
+    browserConnected = true;
+    status.textContent = detail;
+    $("#provider-name").textContent = browserProvider.selectedProvider.toUpperCase();
+    $(".demo-label").textContent = browserProvider.selectedProvider.toUpperCase();
+    if (game && !game.setAIProvider(browserProvider)) throw new Error("Wait until the current AI turn finishes before switching providers.");
+    addEvent(`Browser session connected: ${browserProvider.selectedProvider}.`, "success");
+  } catch (error) {
+    browserConnected = false;
+    status.textContent = error instanceof Error ? error.message : "Browser connection failed";
+    addEvent(status.textContent, "warning");
+  } finally {
+    button.removeAttribute("disabled");
+  }
+});
 
 $("#start-button").addEventListener("click", async () => {
   const button = $("#start-button");
