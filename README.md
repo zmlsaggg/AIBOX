@@ -17,7 +17,7 @@ An asymmetrical prison sandbox: the human player is the warden, while an AI-cont
 
 ## Run locally
 
-Requirements: Node.js 20.19+ or 22.12+.
+Requirements: Node.js 22.12 or newer (matches the `engines` field in `package.json`).
 
 ```bash
 npm install
