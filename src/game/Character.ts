@@ -10,7 +10,9 @@ export class Character {
   readonly body: Body;
   readonly visual: THREE.Group;
   private target: THREE.Vector3 | null = null;
-  private targetLifetime = 0;\n  private gaitPhase = 0;\n  private readonly animatedLimbs: THREE.Mesh[] = [];
+  private targetLifetime = 0;
+  private gaitPhase = 0;
+  private readonly animatedLimbs: THREE.Mesh[] = [];
 
   constructor(
     private readonly world: PhysicsWorld,
@@ -28,7 +30,9 @@ export class Character {
 
     const uniform = new THREE.MeshStandardMaterial({ color, roughness: 0.74 });
     const darkMaterial = new THREE.MeshStandardMaterial({ color: dark, roughness: 0.8 });
-    const skin = new THREE.MeshStandardMaterial({ color: 0xc99f80, roughness: 0.92 });\n    const boot = new THREE.MeshStandardMaterial({ color: 0x171c1d, roughness: 0.95 });\n    const accent = new THREE.MeshStandardMaterial({ color: role === "guard" ? 0x83a6ae : 0x8b5146, roughness: 0.8 });
+    const skin = new THREE.MeshStandardMaterial({ color: 0xc99f80, roughness: 0.92 });
+    const boot = new THREE.MeshStandardMaterial({ color: 0x171c1d, roughness: 0.95 });
+    const accent = new THREE.MeshStandardMaterial({ color: role === "guard" ? 0x83a6ae : 0x8b5146, roughness: 0.8 });
 
     const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.23, 0.45, 5, 10), uniform);
     torso.position.y = 0.72;
