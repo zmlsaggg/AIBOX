@@ -74,7 +74,7 @@ export class Character {
         .setLinearDamping(5)
         .setAngularDamping(8)
         .setCanSleep(false)
-        .setEnabledRotations(false, false, false),
+        .enabledRotations(false, false, false),
     );
     world.createCollider(
       RAPIER.ColliderDesc.capsule(0.27, 0.22).setFriction(0.8).setRestitution(0),
