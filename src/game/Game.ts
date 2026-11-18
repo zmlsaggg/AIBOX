@@ -3,6 +3,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { Character } from "./Character";
 import { PrisonLayout } from "./PrisonLayout";
 import { DemoProvider } from "../ai/DemoProvider";
+import type { AIProvider } from "../ai/contracts";
 import { TurnController, type TurnState } from "../ai/TurnController";
 import type { PrisonDifficulty, TurnResult } from "../ai/contracts";
 
@@ -60,6 +61,7 @@ export class Game {
     canvas: HTMLCanvasElement,
     difficulty: PrisonDifficulty,
     callbacks: GameCallbacks,
+    provider: AIProvider,
   ) {
     this.difficulty = difficulty;
     this.callbacks = callbacks;
@@ -98,7 +100,7 @@ export class Game {
     this.prisoner = new Character(this.physics, this.scene, "prisoner", -9.2, -3.6, "AI PRISONER");
 
     this.turnController = new TurnController(
-      new DemoProvider(),
+      provider,
       (result) => this.applyPrisonerAction(result),
       (state, detail) => this.callbacks.onTurnState(state, detail),
     );
@@ -116,9 +118,10 @@ export class Game {
     canvas: HTMLCanvasElement,
     difficulty: PrisonDifficulty,
     callbacks: GameCallbacks,
+    provider: AIProvider = new DemoProvider(),
   ): Promise<Game> {
     await RAPIER.init();
-    return new Game(canvas, difficulty, callbacks);
+    return new Game(canvas, difficulty, callbacks, provider);
   }
 
   private resize = (): void => {
@@ -296,7 +299,11 @@ export class Game {
     return true;
   }
 
-  async takeDemoTurn(): Promise<void> {
+  setAIProvider(provider: AIProvider): boolean {
+    return this.turnController.setProvider(provider);
+  }
+
+  async takeAITurn(): Promise<void> {
     const position = this.prisoner.position;
     await this.turnController.takeTurn({
       difficulty: this.difficulty,
