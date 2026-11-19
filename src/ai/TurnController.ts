@@ -17,6 +17,53 @@ function signature(action: PrisonerAction): string {
   }
 }
 
+function fallbackAlternatives(snapshot: Omit<PrisonSnapshot, "turn" | "history" | "memorySummary">, primary: PrisonerAction): PrisonerAction[] {
+  const candidates: PrisonerAction[] = [];
+  const px = snapshot.prisoner.x;
+  const pz = snapshot.prisoner.z;
+  const distance = (x: number, z: number) => Math.hypot(x - px, z - pz);
+
+  if (snapshot.prisoner.heldItem === "keycard") {
+    const locked = snapshot.doorStates
+      .filter((door) => door.locked)
+      .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
+    if (locked) candidates.push({
+      type: "use_item",
+      target: locked.id,
+      narration: `Try the held keycard on ${locked.id}.`,
+    });
+  }
+
+  const nearbyItem = snapshot.looseItems
+    .filter((item) => !item.held)
+    .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
+  if (nearbyItem) {
+    if (distance(nearbyItem.x, nearbyItem.z) <= 2.4) {
+      candidates.push({ type: "interact", target: nearbyItem.id, narration: `Pick up nearby ${nearbyItem.id}.` });
+    } else {
+      candidates.push({ type: "move", x: nearbyItem.x, z: nearbyItem.z, pace: "cautious", narration: `Approach ${nearbyItem.id}.` });
+    }
+  }
+
+  const nearbyDoor = snapshot.doorStates
+    .filter((door) => !door.locked && !door.open)
+    .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
+  if (nearbyDoor) {
+    candidates.push(distance(nearbyDoor.x, nearbyDoor.z) <= 2.4
+      ? { type: "interact", target: nearbyDoor.id, narration: `Open nearby ${nearbyDoor.id}.` }
+      : { type: "move", x: nearbyDoor.x, z: nearbyDoor.z, pace: "normal", narration: `Approach ${nearbyDoor.id}.` });
+  }
+
+  candidates.push({ type: "wait", narration: "Pause and reassess the prison state." });
+  const seen = new Set([signature(primary)]);
+  return candidates.filter((candidate) => {
+    const key = signature(candidate);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 3);
+}
+
 export class TurnController {
   private turn = 0;
   private generation = 0;
@@ -70,7 +117,13 @@ export class TurnController {
       const raw = await this.provider.generate(prompt, controller.signal);
       if (generation !== this.generation || controller.signal.aborted) return;
 
-      const decision = parsePrisonerDecision(raw);
+      const parsedDecision = parsePrisonerDecision(raw);
+      const decision = {
+        ...parsedDecision,
+        alternatives: parsedDecision.alternatives.length
+          ? parsedDecision.alternatives
+          : fallbackAlternatives(snapshot, parsedDecision.action),
+      };
       const failedSignatures = new Set(this.history.filter((entry) => !entry.success).slice(-5).map((entry) => signature(entry.action)));
       let selected = decision.action;
       let repetitionNote = "";
