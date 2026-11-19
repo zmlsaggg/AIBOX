@@ -75,7 +75,7 @@ app.innerHTML = `
             <div class="prompt-progress"><span id="prompt-progress"></span></div>
             <p id="ai-detail">The prisoner is waiting for an instruction cycle.</p>
             <div class="browser-session-controls">
-              <label>AI WEBSITE
+              <label>ВЫБЕРИ ИИ-СЕРВИС
                 <select id="browser-provider">
                   <option value="chatgpt">ChatGPT</option>
                   <option value="deepseek">DeepSeek</option>
@@ -84,31 +84,8 @@ app.innerHTML = `
                   <option value="claude">Claude</option>
                 </select>
               </label>
-              <label>LOCAL PAIRING TOKEN
-                <input id="bridge-token" type="password" autocomplete="off" placeholder="Paste token from bridge terminal">
-              </label>
-              <button class="connect-browser-button" id="connect-browser">CONNECT BROWSER SESSION</button>
-              <small id="browser-connection-status">Не подключено. Для реального ИИ нужен запущенный Browser Bridge.</small>
-              <div class="bridge-help">
-                <button class="bridge-help-toggle" id="bridge-help-toggle" type="button" aria-expanded="false">КАК ПОЛУЧИТЬ PAIRING TOKEN?</button>
-                <div class="bridge-help-steps" id="bridge-help-steps" hidden>
-                  <p><b>Токен создаётся автоматически.</b> Это не ключ ChatGPT или Qwen.</p>
-                  <ol>
-                    <li>Установи Node.js 22.12 или новее.</li>
-                    <li>Открой PowerShell и выполни команды:</li>
-                  </ol>
-                  <pre>git clone https://github.com/zmlsaggg/AIBOX.git
-cd AIBOX
-powershell -ExecutionPolicy Bypass -File .\\bridge\\Start-Bridge.ps1</pre>
-                  <ol start="3">
-                    <li>В терминале найди строку <b>Pairing token</b> и скопируй значение после двоеточия.</li>
-                    <li>Вставь значение в поле выше. Не закрывай окно PowerShell.</li>
-                    <li>Нажми CONNECT. Откроется Chromium — войди в выбранный ИИ-сервис вручную.</li>
-                    <li>Вернись в игру и нажми RUN AI TURN.</li>
-                  </ol>
-                  <p class="bridge-help-note">Токен локальный и секретный. Не публикуй его и не отправляй другим людям.</p>
-                </div>
-              </div>
+              <button class="connect-browser-button" id="connect-browser">ПОДКЛЮЧИТЬ ИИ</button>
+              <small id="browser-connection-status">Нажми «Подключить ИИ». Вход откроется в отдельном окне AIBOX. Повторно входить не придётся.</small>
             </div>
             <div class="ai-actions">
               <button class="primary-button" data-action="next-turn">RUN AI TURN <span>↗</span></button>
@@ -316,21 +293,22 @@ $("#connect-browser").addEventListener("click", async () => {
   const button = $("#connect-browser");
   const status = $("#browser-connection-status");
   const selected = $("#browser-provider") as HTMLSelectElement;
-  const token = ($("#bridge-token") as HTMLInputElement).value;
   button.setAttribute("disabled", "true");
-  status.textContent = "Opening browser and checking session…";
+  status.textContent = "Открываю окно выбранного ИИ-сервиса…";
   try {
-    browserProvider.configure(token, selected.value as BrowserProviderId);
+    browserProvider.configure(selected.value as BrowserProviderId);
     const detail = await browserProvider.connect();
+    if (game && !game.setAIProvider(browserProvider)) {
+      throw new Error("Дождись завершения текущего хода, чтобы сменить ИИ-сервис.");
+    }
     browserConnected = true;
     status.textContent = detail;
     $("#provider-name").textContent = browserProvider.selectedProvider.toUpperCase();
     $(".demo-label").textContent = browserProvider.selectedProvider.toUpperCase();
-    if (game && !game.setAIProvider(browserProvider)) throw new Error("Wait until the current AI turn finishes before switching providers.");
-    addEvent(`Browser session connected: ${browserProvider.selectedProvider}.`, "success");
+    addEvent(`Открыта сессия ${browserProvider.selectedProvider}. Войди в аккаунт в окне AIBOX.`, "success");
   } catch (error) {
     browserConnected = false;
-    status.textContent = error instanceof Error ? error.message : "Browser connection failed";
+    status.textContent = error instanceof Error ? error.message : "Не удалось открыть окно ИИ.";
     addEvent(status.textContent, "warning");
   } finally {
     button.removeAttribute("disabled");
