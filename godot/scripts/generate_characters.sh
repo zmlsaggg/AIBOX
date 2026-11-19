@@ -36,5 +36,5 @@ mkdir -p "$DESTINATION"
   --params "$ROOT/tools/aibox-characters/prisoner.params.json" \
   --out "$DESTINATION/prisoner.glb"
 
-node "$SCRIPT_DIR/verify-character-glb.mjs" "$DESTINATION/guard.glb"
-node "$SCRIPT_DIR/verify-character-glb.mjs" "$DESTINATION/prisoner.glb"
+node "$ROOT/tools/aibox-characters/verify-character-glb.mjs" "$DESTINATION/guard.glb"
+node "$ROOT/tools/aibox-characters/verify-character-glb.mjs" "$DESTINATION/prisoner.glb"
