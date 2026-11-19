@@ -24,7 +24,7 @@ export class BrowserProvider implements AIProvider {
 
   async generate(prompt: string, signal: AbortSignal): Promise<string> {
     if (!window.aiboxAI) {
-      throw new Error("Встроенный AI-браузер доступен только в Windows-версии AIBOX.");
+      throw new Error("Подключение к авторизованным вкладкам Chrome доступно в установленной Windows-версии AIBOX.");
     }
 
     const abort = () => {
