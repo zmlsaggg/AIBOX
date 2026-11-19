@@ -19,6 +19,7 @@ export class BrowserProvider implements AIProvider {
       throw new Error("Подключение к сайтам ИИ доступно в установленной Windows-версии AIBOX. Запусти игру через AIBOX.exe.");
     }
     const result = await window.aiboxAI.connect(this.provider);
+    if (!result.connected) throw new Error(result.message);
     return result.message;
   }
 
