@@ -29,11 +29,11 @@ fi
 mkdir -p "$DESTINATION"
 "$GENERATOR/node_modules/.bin/tsx" "$ROOT/tools/aibox-characters/export-character.ts" \
   --generator "$GENERATOR" \
-  --params "$SCRIPT_DIR/guard.params.json" \
+  --params "$ROOT/tools/aibox-characters/guard.params.json" \
   --out "$DESTINATION/guard.glb"
 "$GENERATOR/node_modules/.bin/tsx" "$ROOT/tools/aibox-characters/export-character.ts" \
   --generator "$GENERATOR" \
-  --params "$SCRIPT_DIR/prisoner.params.json" \
+  --params "$ROOT/tools/aibox-characters/prisoner.params.json" \
   --out "$DESTINATION/prisoner.glb"
 
 node "$SCRIPT_DIR/verify-character-glb.mjs" "$DESTINATION/guard.glb"
