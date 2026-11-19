@@ -365,3 +365,43 @@ button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
   .mobile-joystick { width: 100px; height: 100px; }
   .mobile-interact { width: 64px; height: 64px; }
 }
+
+
+/* AI planning, alternatives and turn-by-turn memory */
+.ai-cognition {
+  margin-top: 11px;
+  border: 1px solid rgba(118, 212, 189, .13);
+  border-radius: 6px;
+  background: rgba(5, 13, 16, .48);
+  overflow: hidden;
+}
+.ai-cognition > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  color: #a9c1b8;
+  font: 8px var(--mono);
+  letter-spacing: .1em;
+  cursor: pointer;
+  list-style: none;
+}
+.ai-cognition > summary::-webkit-details-marker { display: none; }
+.ai-cognition > summary::after { content: "＋"; color: #718d83; }
+.ai-cognition[open] > summary::after { content: "−"; }
+.cognition-live { color: #6db7a2; font-size: 7px; }
+.cognition-block { padding: 8px 10px; border-top: 1px solid rgba(160, 190, 195, .07); }
+.cognition-block > small { display: block; margin-bottom: 5px; color: #627b79; font: 7px var(--mono); letter-spacing: .09em; }
+.cognition-block p { margin: 0; color: #bdcbc4; font-size: 9px; line-height: 1.55; overflow-wrap: anywhere; }
+.cognition-meta { display: flex; justify-content: space-between; margin-top: 7px; color: #647b77; font: 7px var(--mono); }
+.cognition-meta b { color: #9bd2bf; font-weight: 500; }
+.cognition-block ol { display: grid; gap: 5px; margin: 0; padding-left: 17px; color: #9cadaa; font-size: 8px; line-height: 1.45; }
+.cognition-block li { padding-left: 2px; overflow-wrap: anywhere; }
+.cognition-block li::marker { color: #6e9c8e; }
+.cognition-block li.memory-success { color: #8fc7ae; }
+.cognition-block li.memory-failure { color: #d49b89; }
+@media (max-width: 780px) {
+  .ai-cognition { margin-top: 9px; }
+  .cognition-block { padding: 7px 9px; }
+}
