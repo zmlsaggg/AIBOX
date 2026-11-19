@@ -4,13 +4,20 @@ import type { PrisonDifficulty } from "../ai/contracts";
 
 type PhysicsWorld = InstanceType<typeof RAPIER.World>;
 type Collider = ReturnType<PhysicsWorld["createCollider"]>;
+type Body = ReturnType<PhysicsWorld["createRigidBody"]>;
 
 interface Door {
   id: string;
   mesh: THREE.Mesh;
+  pivot: THREE.Group;
+  body: Body;
   collider: Collider;
   open: boolean;
   position: THREE.Vector3;
+  hinge: THREE.Vector3;
+  offset: THREE.Vector3;
+  angle: number;
+  targetAngle: number;
 }
 
 export class PrisonLayout {
@@ -295,52 +302,101 @@ export class PrisonLayout {
     const height = 2.05;
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), this.materials.metal);
     mesh.name = id;
-    mesh.position.set(x, height / 2, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    this.scene.add(mesh);
+
+    const horizontal = width >= depth;
+    const offset = horizontal
+      ? new THREE.Vector3(width / 2, 0, 0)
+      : new THREE.Vector3(0, 0, depth / 2);
+    const hinge = horizontal
+      ? new THREE.Vector3(x - width / 2, height / 2, z)
+      : new THREE.Vector3(x, height / 2, z - depth / 2);
+
+    const pivot = new THREE.Group();
+    pivot.name = `${id}-hinge`;
+    pivot.position.copy(hinge);
+    mesh.position.copy(offset);
+    pivot.add(mesh);
+    this.scene.add(pivot);
 
     const inset = new THREE.Mesh(
       new THREE.BoxGeometry(Math.max(0.12, width - 0.2), 0.12, depth + 0.025),
       this.materials.darkMetal,
     );
-    inset.position.set(0, 0.32, 0);
+    inset.position.set(0, -height / 2 + 0.32, 0);
     mesh.add(inset);
     const indicator = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, depth + 0.05), this.materials.amber);
-    indicator.position.set(0, 0.82, 0);
+    indicator.position.set(0, -height / 2 + 0.82, 0);
     mesh.add(indicator);
     const slot = new THREE.Mesh(new THREE.BoxGeometry(Math.min(0.58, width * 0.42), 0.18, depth + 0.04), this.materials.darkMetal);
-    slot.position.set(0, 0.35, 0);
+    slot.position.set(0, -height / 2 + 0.35, 0);
     mesh.add(slot);
     if (width > 0.8) {
       const barCount = Math.max(3, Math.floor(width * 3));
       for (let index = 0; index < barCount; index += 1) {
         const barX = -width * 0.38 + (index / (barCount - 1)) * width * 0.76;
         const bar = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.3, depth + 0.06), this.materials.metal);
-        bar.position.set(barX, 0.35, 0);
+        bar.position.set(barX, -height / 2 + 0.35, 0);
         mesh.add(bar);
       }
     }
     const handle = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.2, 0.075), this.materials.trim);
-    handle.position.set(width * 0.34, 0.88, depth > width ? 0.08 : 0);
+    handle.position.set(width * 0.34, -height / 2 + 0.88, depth > width ? 0.08 : 0);
     mesh.add(handle);
     for (const side of [-1, 1]) {
       const bolt = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), this.materials.trim);
-      bolt.position.set(side * Math.max(0.08, width * 0.42), 0.72, 0.03);
+      bolt.position.set(side * Math.max(0.08, width * 0.42), -height / 2 + 0.72, 0.03);
       mesh.add(bolt);
     }
 
-    const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, height / 2, z));
-    const collider = this.world.createCollider(RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2), body);
-    this.doors.set(id, { id, mesh, collider, open: false, position: new THREE.Vector3(x, 0, z) });
+    const body = this.world.createRigidBody(
+      RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x, height / 2, z),
+    );
+    const collider = this.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2).setFriction(0.72),
+      body,
+    );
+    this.doors.set(id, {
+      id,
+      mesh,
+      pivot,
+      body,
+      collider,
+      open: false,
+      position: new THREE.Vector3(x, 0, z),
+      hinge,
+      offset,
+      angle: 0,
+      targetAngle: 0,
+    });
+  }
+
+  /** Advance hinged door visuals and their kinematic Rapier colliders on fixed physics ticks. */
+  update(delta: number): void {
+    for (const door of this.doors.values()) {
+      const difference = door.targetAngle - door.angle;
+      if (Math.abs(difference) < 0.0015) {
+        door.angle = door.targetAngle;
+      } else {
+        door.angle += difference * (1 - Math.exp(-7.5 * delta));
+      }
+
+      door.pivot.rotation.y = door.angle;
+      const cosine = Math.cos(door.angle);
+      const sine = Math.sin(door.angle);
+      const centerX = door.hinge.x + cosine * door.offset.x + sine * door.offset.z;
+      const centerZ = door.hinge.z - sine * door.offset.x + cosine * door.offset.z;
+      door.body.setNextKinematicTranslation({ x: centerX, y: door.hinge.y, z: centerZ });
+      door.body.setNextKinematicRotation(door.pivot.quaternion);
+    }
   }
 
   toggleDoor(id: string): boolean | null {
     const door = this.doors.get(id);
     if (!door) return null;
     door.open = !door.open;
-    door.collider.setEnabled(!door.open);
-    door.mesh.visible = !door.open;
+    door.targetAngle = door.open ? 1.28 : 0;
     return door.open;
   }
 
