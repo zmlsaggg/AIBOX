@@ -22,6 +22,15 @@ export function buildPrisonerPrompt(snapshot: PrisonSnapshot): string {
   const items = snapshot.looseItems.map((item) =>
     `${item.id} (${item.label}) at (${item.x.toFixed(1)}, ${item.z.toFixed(1)})${item.held ? " [HELD]" : ""}`,
   );
+  const reachableRoutes = snapshot.navigation?.reachable.map((option) =>
+    `- ${option.id} [${option.kind}${option.locked ? ", LOCKED" : ""}] target=(${option.targetX.toFixed(1)},${option.targetZ.toFixed(1)}); ${option.reachesTarget ? "reachable target" : "safe approach only"}=(${option.approachX.toFixed(1)},${option.approachZ.toFixed(1)}); path=${option.distance.toFixed(1)}m; waypoints=${option.route.map((point) => `(${point.x.toFixed(1)},${point.z.toFixed(1)})`).join(" -> ") || "current position"}`,
+  ) ?? [];
+  const blockedRoutes = snapshot.navigation?.blocked.map((option) =>
+    `- ${option.id} [${option.kind}${option.locked ? ", LOCKED" : ""}]: BLOCKED — ${option.reason}`,
+  ) ?? [];
+  const freeAreas = snapshot.navigation?.freeAreas.map((option) =>
+    `- ${option.id}: approach=(${option.approachX.toFixed(1)},${option.approachZ.toFixed(1)}), path=${option.distance.toFixed(1)}m, waypoints=${option.route.map((point) => `(${point.x.toFixed(1)},${point.z.toFixed(1)})`).join(" -> ")}`,
+  ) ?? [];
 
   return [
     "ROLE: You are the prisoner in AIBOX, a systemic prison-escape simulation. You are not a chatbot giving advice: you control one character inside the simulated world.",
@@ -39,7 +48,11 @@ export function buildPrisonerPrompt(snapshot: PrisonSnapshot): string {
     '{"type":"speak","message":"What you say to the guard","narration":"..."}',
     '{"type":"wait","narration":"..."}',
     "ACTION RULES:",
-    "- move asks the game to calculate an A* route around known walls, furniture and closed doors. If moving=true, you are already following a route; consider whether to let it progress before replacing it. If the exact coordinate is blocked, the route planner may stop at the nearest reachable approach point. pace must be exactly cautious, normal, or fast. Closed/locked doors remain impassable until opened.",
+    "- MOVE ROUTING IS AUTHORITATIVE: the NAVIGATION BRIEFING below is calculated by the game's A* planner from the current position, collision grid, furniture, partitions and actual door states. Each listed waypoint chain has already been checked for a traversable route.",
+    "- When moving toward a listed item or door, use its APPROACH coordinate, not the object's center. If it says 'safe approach only', you will stop on the near side of the obstacle. Then use interact/use_item as appropriate; never try to walk through the door or wall.",
+    "- Never choose a coordinate listed under BLOCKED TARGETS. A locked door is an interaction objective, not a walk-through route. First approach its reachable near-side point, then use the keycard or wrench, then open it, and only then recalculate movement.",
+    "- You still have broad freedom: you may choose any new coordinate inside the prison's walkable area, not only the suggested options. But do not invent a route across a partition. Prefer supplied waypoints when crossing a narrow corridor or moving between cells. If a new target fails, use the returned safe endpoint and re-plan from the updated navigation briefing.",
+    "- If moving=true, you are already following a validated waypoint chain. Usually let it progress rather than replacing it with a second distant destination. pace must be exactly cautious, normal, or fast.",
     "- inspect gathers information only when you are close enough. Do not claim an object was inspected if the game reports failure.",
     "- interact picks up a nearby loose item or opens/closes a nearby unlocked door. You can carry only one item; if your hands are occupied, throw the held item before picking up another. Use the exact item/door id.",
     "- use_item uses the item currently in your hand. A keycard unlocks a nearby checkpoint door (then interact to open it); a wrench force-opens one nearby locked checkpoint and is consumed. Do not claim success unless the next turn state confirms it.",
@@ -64,6 +77,12 @@ export function buildPrisonerPrompt(snapshot: PrisonSnapshot): string {
     `VISIBLE OBJECTS: ${snapshot.visibleObjects.join(", ") || "none"}`,
     `DOOR STATES: ${doors.join("; ") || "none"}`,
     `ITEM STATES: ${items.join("; ") || "none"}`,
+    "AUTHORITATIVE NAVIGATION BRIEFING (recomputed from your current location and live door state):",
+    reachableRoutes.join("\\n") || "No listed object or door has a verified route from the current position.",
+    "BLOCKED TARGETS — DO NOT MOVE TO THESE COORDINATES:",
+    blockedRoutes.join("\\n") || "None reported.",
+    "OPEN WALKABLE AREAS — YOU MAY FREELY EXPLORE THESE OR CHOOSE ANOTHER COORDINATE IN THE SAME ACCESSIBLE SPACE:",
+    freeAreas.join("\\n") || "No additional open-area anchors are currently reachable.",
     `KNOWN FACTS: ${snapshot.knownFacts.join(" | ") || "Nothing confirmed yet"}`,
     `RECENT EVENTS: ${snapshot.recentEvents.slice(-8).join(" | ") || "none"}`,
     "",
