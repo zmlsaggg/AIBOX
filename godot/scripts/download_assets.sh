@@ -11,7 +11,7 @@ download() {
   local url="$2"
   local expected_bytes="$3"
   local expected_sha="$4"
-  local destination="$TARGET/$name"
+  local destination="$TARGET/${name%.glb}.source.glb"
   local temporary="$destination.download"
 
   if [[ -s "$destination" ]] &&
@@ -51,3 +51,7 @@ download "prisoner_casual_walker.glb" \
   "1789516" "60f7fec2c35fc46b848d99da4c67f43213eea6d8464aa05ac683ffacf2a576d7"
 
 echo "AIBOX CC0 humanoid characters are ready."
+
+REPOSITORY_ROOT="$(cd "$ROOT/.." && pwd)"
+echo "Converting compressed source GLBs into Godot-compatible GLB files..."
+node "$REPOSITORY_ROOT/tools/prepare-godot-assets.mjs" "$TARGET"
