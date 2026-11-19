@@ -396,7 +396,7 @@ export class PrisonLayout {
     const door = this.doors.get(id);
     if (!door) return null;
     door.open = !door.open;
-    door.targetAngle = door.open ? 1.28 : 0;
+    door.targetAngle = door.open ? (["outer-exit", "west-cell-door", "control-door"].includes(id) ? -1.28 : 1.28) : 0;
     return door.open;
   }
 
