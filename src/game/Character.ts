@@ -17,6 +17,7 @@ export class Character {
   readonly body: Body;
   readonly visual: THREE.Group;
   private target: THREE.Vector3 | null = null;
+  private readonly waypoints: THREE.Vector3[] = [];
   private targetLifetime = 0;
   private gaitPhase = 0;
   private readonly animatedLimbs: THREE.Mesh[] = [];
@@ -152,6 +153,7 @@ export class Character {
   startPickup(onGrab: () => void): boolean {
     if (this.pickupAnimation) return false;
     this.target = null;
+    this.waypoints.length = 0;
     this.movementInput.set(0, 0);
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this.pickupAnimation = { elapsed: 0, onGrab, grabbed: false };
@@ -170,13 +172,26 @@ export class Character {
   moveTo(x: number, z: number, pace: MovementPace = "normal"): void {
     if (this.pickupAnimation) return;
     this.targetSpeedFactor = pace === "cautious" ? 0.46 : pace === "fast" ? 1 : 0.78;
+    this.waypoints.length = 0;
     this.target = new THREE.Vector3(x, 0.51, z);
     this.targetLifetime = 0;
     this.movementInput.set(0, 0);
   }
 
+  moveAlong(points: Array<{ x: number; z: number }>, pace: MovementPace = "normal"): boolean {
+    if (this.pickupAnimation || points.length === 0) return false;
+    this.targetSpeedFactor = pace === "cautious" ? 0.46 : pace === "fast" ? 1 : 0.78;
+    this.waypoints.length = 0;
+    this.waypoints.push(...points.slice(1).map((point) => new THREE.Vector3(point.x, 0.51, point.z)));
+    this.target = new THREE.Vector3(points[0].x, 0.51, points[0].z);
+    this.targetLifetime = 0;
+    this.movementInput.set(0, 0);
+    return true;
+  }
+
   stop(): void {
     this.target = null;
+    this.waypoints.length = 0;
     this.movementInput.set(0, 0);
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
   }
@@ -190,8 +205,14 @@ export class Character {
       const dx = this.target.x - p.x;
       const dz = this.target.z - p.z;
       const distance = Math.hypot(dx, dz);
-      if (distance < 0.24 || this.targetLifetime > 8) {
+      if (distance < 0.24) {
+        const next = this.waypoints.shift();
+        this.target = next ?? null;
+        this.targetLifetime = 0;
+        this.targetDirection.set(0, 0);
+      } else if (this.targetLifetime > 8) {
         this.target = null;
+        this.waypoints.length = 0;
         this.targetDirection.set(0, 0);
       } else {
         this.targetDirection.set(dx / distance, dz / distance);
