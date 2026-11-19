@@ -130,7 +130,18 @@ const server = createServer(async (req, res) => {
   const origin = req.headers.origin;
   if (req.method === "OPTIONS") {
     if (!ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin not allowed" });
-    res.writeHead(204, { "access-control-allow-origin": origin, "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type,authorization", "access-control-max-age": "600", vary: "Origin" });
+    const headers = {
+      "access-control-allow-origin": origin,
+      "access-control-allow-methods": "GET,POST,OPTIONS",
+      "access-control-allow-headers": "content-type,authorization",
+      "access-control-max-age": "600",
+      vary: "Origin"
+    };
+    // Chromium may send a Private Network Access preflight for file:// -> localhost.
+    if (req.headers["access-control-request-private-network"] === "true") {
+      headers["access-control-allow-private-network"] = "true";
+    }
+    res.writeHead(204, headers);
     return res.end();
   }
   if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin not allowed" });
