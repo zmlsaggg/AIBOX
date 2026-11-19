@@ -10,7 +10,7 @@ export class CinematicAtmosphere {
   private readonly dustGeometry = new THREE.BufferGeometry();
   private readonly dustPositions = new Float32Array(36 * 3);
   private readonly dustSpeeds = new Float32Array(36);
-  private readonly dustPoints: THREE.Points;
+  private dustPoints!: THREE.Points;
   private dustTime = 0;
 
   constructor(private readonly scene: THREE.Scene) {
