@@ -54,7 +54,7 @@ jobs:
       - name: Verify character assets
         run: test -s godot/assets/characters/guard_dog_walker.glb && test -s godot/assets/characters/prisoner_casual_walker.glb
       - name: Import and parse native project
-        run: godot --headless --path godot --editor --quit
+        run: godot --headless --path godot --editor --quit --log-file godot-import.log
       - name: Verify rigged character assets
         run: godot --headless --path godot --script res://scripts/asset_smoke_test.gd
       - name: Run native project smoke test
@@ -62,6 +62,6 @@ jobs:
       - name: Fail on script or runtime errors
         if: always()
         run: |
-          if grep -E "SCRIPT ERROR|Parse Error|ERROR: Cannot|AIBOX NAVIGATION SMOKE FAILED" godot-smoke.log; then
+          if grep -E "ERROR:|SCRIPT ERROR|Parse Error|AIBOX NAVIGATION SMOKE FAILED" godot-import.log godot-smoke.log; then
             exit 1
           fi
