@@ -26,7 +26,7 @@ jobs:
       - name: Typecheck and build web app
         run: npm run build
       - name: Package Windows installer and portable app
-        run: npx electron-builder --win nsis portable --x64
+        run: npx electron-builder --win nsis portable --x64 --publish never
       - name: Upload Windows executables
         uses: actions/upload-artifact@v4
         with:
