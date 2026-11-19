@@ -136,6 +136,15 @@ function startChromeBridge() {
   });
 }
 
+async function waitForChromeConnector(timeoutMs = 6500) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (chromeSocket && chromeSocket.readyState === WebSocket.OPEN) return true;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  return Boolean(chromeSocket && chromeSocket.readyState === WebSocket.OPEN);
+}
+
 async function openAIWindow(providerId) {
   if (!isAllowedProvider(providerId)) throw new Error("Выбран неподдерживаемый AI-сервис.");
   if (generationBusy) throw new Error("Дождись завершения текущего хода, чтобы сменить ИИ-сервис.");
@@ -146,22 +155,34 @@ async function openAIWindow(providerId) {
     throw new Error("Не запустился локальный Chrome-коннектор AIBOX (порт 3210). Закрой старый AIBOX Bridge и перезапусти игру.");
   }
 
-  if (chromeSocket && chromeSocket.readyState === WebSocket.OPEN) {
+  let connectorReady = Boolean(chromeSocket && chromeSocket.readyState === WebSocket.OPEN);
+  if (!connectorReady) {
+    // Always open the provider in the user's actual default browser first.
+    await shell.openExternal(provider.url);
+    connectorReady = await waitForChromeConnector();
+  }
+
+  if (connectorReady) {
     try {
       await sendChromeCommand("open-provider", {}, 12000);
+      return {
+        provider: providerId,
+        title: provider.label,
+        connected: true,
+        message: `Открыл ${provider.label} в твоём обычном Chrome. AIBOX видит установленное расширение и использует текущую авторизованную сессию.`,
+      };
     } catch {
-      await shell.openExternal(provider.url);
+      connectorReady = false;
     }
-  } else {
-    // Opens the OS default browser. When Chrome is the default, this is the
-    // user's regular Chrome profile with all its existing sign-in sessions.
-    await shell.openExternal(provider.url);
   }
 
   return {
     provider: providerId,
     title: provider.label,
-    message: `Открыл ${provider.label} в обычном браузере. AIBOX использует твою текущую Chrome-сессию; входить во второй профиль не нужно.`,
+    connected: false,
+    message: `Открыл ${provider.label} в обычном браузере, но AIBOX пока не видит Chrome Connector.
+
+Нажми «УСТАНОВИТЬ CHROME CONNECTOR», затем в chrome://extensions включи режим разработчика и загрузи распакованное расширение из показанной папки. После этого снова нажми «ОТКРЫТЬ ИИ В CHROME». Входи в свой обычный аккаунт — второй профиль не нужен.`,
   };
 }
 
