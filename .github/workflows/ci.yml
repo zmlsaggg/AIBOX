@@ -56,6 +56,6 @@ jobs:
       - name: Fail on script or runtime errors
         if: always()
         run: |
-          if grep -E "SCRIPT ERROR|Parse Error|ERROR: Cannot" godot-smoke.log; then
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR: Cannot|AIBOX NAVIGATION SMOKE FAILED" godot-smoke.log; then
             exit 1
           fi
