@@ -97,7 +97,7 @@ jobs:
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('aibox-build-{0}', github.run_id) }}
           target_commitish: ${{ github.sha }}
-          name: ${{ startsWith(github.ref, 'refs/tags/v') && format('AIBOX {0}', github.ref_name) || format('AIBOX CI build #{0}', github.run_number) }}
+          name: "${{ startsWith(github.ref, 'refs/tags/v') && format('AIBOX {0}', github.ref_name) || format('AIBOX CI build #{0}', github.run_number) }}"
           generate_release_notes: true
           prerelease: ${{ github.ref == 'refs/heads/main' || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           files: |
