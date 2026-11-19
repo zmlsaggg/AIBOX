@@ -46,7 +46,7 @@ jobs:
       - name: Download pinned CC0 character models
         run: bash godot/scripts/download_assets.sh
       - name: Verify character assets
-        run: test -s godot/assets/characters/guard_swat.glb && test -s godot/assets/characters/prisoner_punk.glb
+        run: test -s godot/assets/characters/guard_dog_walker.glb && test -s godot/assets/characters/prisoner_casual_walker.glb
       - name: Import and parse native project
         run: godot --headless --path godot --editor --quit
       - name: Verify rigged character assets
