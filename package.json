@@ -18,7 +18,8 @@
     "@capacitor/android": "^7.4.3",
     "@capacitor/core": "^7.4.3",
     "@dimforge/rapier3d-compat": "^0.21.0",
-    "three": "^0.187.0"
+    "three": "^0.187.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.3",
@@ -72,6 +73,12 @@
     },
     "portable": {
       "artifactName": "AIBOX-${version}-Portable-${arch}.${ext}"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "chrome-extension",
+        "to": "chrome-extension"
+      }
+    ]
   }
 }
