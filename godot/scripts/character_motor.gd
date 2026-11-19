@@ -207,7 +207,21 @@ func _physics_process(delta: float) -> void:
 		velocity.y = -0.12
 
 	move_and_slide()
+	_push_dynamic_props(horizontal_velocity)
 	_update_animation(delta, moving, horizontal_velocity.length())
+
+func _push_dynamic_props(horizontal_velocity: Vector3) -> void:
+	if horizontal_velocity.length_squared() < 0.16:
+		return
+	for index in range(get_slide_collision_count()):
+		var collision := get_slide_collision(index)
+		var body := collision.get_collider()
+		if body is RigidBody3D and body.is_in_group("pickup_items"):
+			var push_direction := -collision.get_normal()
+			push_direction.y = clampf(push_direction.y, -0.1, 0.25)
+			if push_direction.length_squared() > 0.001:
+				var strength := clampf(horizontal_velocity.length() * body.mass * 0.42, 0.35, 3.2)
+				body.apply_central_impulse(push_direction.normalized() * strength)
 
 func _update_animation(delta: float, moving: bool, speed: float) -> void:
 	if visual_root == null:
