@@ -202,35 +202,36 @@ func _physics_process(delta: float) -> void:
 func _update_animation(delta: float, moving: bool, speed: float) -> void:
 	if visual_root == null:
 		return
-	if _play_model_animation(moving and speed > 0.12):
-		return
-	if skeleton:
-		_update_rig_animation(delta, moving, speed)
-		return
-	if moving and speed > 0.12:
-		gait_clock += delta * (5.2 + speed * 1.7)
-		var stride := sin(gait_clock) * minf(0.6, speed / maxf(walk_speed, 0.1))
-		if left_leg:
-			left_leg.rotation.x = stride * 0.72
-		if right_leg:
-			right_leg.rotation.x = -stride * 0.72
-		if left_arm:
-			left_arm.rotation.x = -stride * 0.45
-		if right_arm:
-			right_arm.rotation.x = stride * 0.45
-		visual_root.position.y = absf(sin(gait_clock * 2.0)) * 0.025
-		if torso:
-			torso.rotation.z = lerpf(torso.rotation.z, -stride * 0.035, 1.0 - exp(-delta * 8.0))
-	else:
-		gait_clock += delta
-		var breathe := sin(gait_clock * 1.4) * 0.008
-		visual_root.position.y = lerpf(visual_root.position.y, 0.0, 1.0 - exp(-delta * 8.0))
-		if torso:
-			torso.rotation.x = lerpf(torso.rotation.x, breathe, 1.0 - exp(-delta * 3.0))
-		for limb in [left_leg, right_leg, left_arm, right_arm]:
-			if limb:
-				limb.rotation.x = lerpf(limb.rotation.x, 0.0, 1.0 - exp(-delta * 9.0))
 
+	var has_imported_clip := _play_model_animation(moving and speed > 0.12)
+	if not has_imported_clip:
+		if skeleton:
+			_update_rig_animation(delta, moving, speed)
+		elif moving and speed > 0.12:
+			gait_clock += delta * (5.2 + speed * 1.7)
+			var stride := sin(gait_clock) * minf(0.6, speed / maxf(walk_speed, 0.1))
+			if left_leg:
+				left_leg.rotation.x = stride * 0.72
+			if right_leg:
+				right_leg.rotation.x = -stride * 0.72
+			if left_arm:
+				left_arm.rotation.x = -stride * 0.45
+			if right_arm:
+				right_arm.rotation.x = stride * 0.45
+			visual_root.position.y = absf(sin(gait_clock * 2.0)) * 0.025
+			if torso:
+				torso.rotation.z = lerpf(torso.rotation.z, -stride * 0.035, 1.0 - exp(-delta * 8.0))
+		else:
+			gait_clock += delta
+			var breathe := sin(gait_clock * 1.4) * 0.008
+			visual_root.position.y = lerpf(visual_root.position.y, 0.0, 1.0 - exp(-delta * 8.0))
+			if torso:
+				torso.rotation.x = lerpf(torso.rotation.x, breathe, 1.0 - exp(-delta * 3.0))
+			for limb in [left_leg, right_leg, left_arm, right_arm]:
+				if limb:
+					limb.rotation.x = lerpf(limb.rotation.x, 0.0, 1.0 - exp(-delta * 9.0))
+
+	# Keep facing responsive whether we use imported clips, procedural bones or fallback meshes.
 	if moving and speed > 0.12:
 		var direction := Vector3(velocity.x, 0.0, velocity.z).normalized()
 		var desired_yaw := atan2(-direction.x, -direction.z)
