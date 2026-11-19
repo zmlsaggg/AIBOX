@@ -18,7 +18,7 @@ interface PickupItem {
 
 export class PickupSystem {
   private readonly items: PickupItem[] = [];
-  private heldItem: PickupItem | null = null;
+  private readonly heldItems = new Map<Character, PickupItem>();
 
   constructor(private readonly world: PhysicsWorld, private readonly scene: THREE.Scene) {
     this.addKeycard(-3.2, 0.035, 6.15);
@@ -149,7 +149,7 @@ export class PickupSystem {
   }
 
   pickupNearest(character: Character, maxDistance = 1.55, requestedName?: string): string | null {
-    if (this.heldItem || character.isPickingUp) return null;
+    if (this.heldItems.has(character) || character.isPickingUp) return null;
     const position = character.position;
     let nearest: PickupItem | null = null;
     let nearestDistance = maxDistance;
@@ -174,7 +174,7 @@ export class PickupSystem {
       item.body.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased, true);
       item.collider.setEnabled(false);
       item.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      this.heldItem = item;
+      this.heldItems.set(character, item);
     });
     return started ? item.label : null;
   }
@@ -185,6 +185,6 @@ export class PickupSystem {
       item.mesh.removeFromParent();
     }
     this.items.length = 0;
-    this.heldItem = null;
+    this.heldItems.clear();
   }
 }
