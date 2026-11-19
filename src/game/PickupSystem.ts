@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Character } from "./Character";
+import type { PrisonItemState } from "../ai/contracts";
 
 type PhysicsWorld = InstanceType<typeof RAPIER.World>;
 type Body = ReturnType<PhysicsWorld["createRigidBody"]>;
@@ -149,6 +150,23 @@ export class PickupSystem {
     }
   }
 
+  getHeldItemId(character: Character): string | null {
+    return this.heldItems.get(character)?.id ?? null;
+  }
+
+  getItemStates(): PrisonItemState[] {
+    return this.items.map((item) => {
+      const p = item.body.translation();
+      return {
+        id: item.id,
+        label: item.label,
+        x: p.x,
+        z: p.z,
+        held: Boolean(item.heldBy || item.reservedBy),
+      };
+    });
+  }
+
   pickupNearest(character: Character, maxDistance = 1.55, requestedName?: string): string | null {
     if (this.heldItems.has(character) || character.isPickingUp) return null;
     const position = character.position;
@@ -183,35 +201,53 @@ export class PickupSystem {
     return item.label;
   }
 
-  /** Release the held object with a small forward/upward impulse. */
+  /** Release the held object in the character's facing direction. */
   dropHeld(character: Character, throwStrength = 4.2): string | null {
+    const yaw = character.visual.rotation.y;
+    return this.throwHeld(
+      character,
+      character.position.x + Math.sin(yaw) * 3,
+      character.position.z + Math.cos(yaw) * 3,
+      throwStrength,
+    );
+  }
+
+  /** Throw a held item toward a world-space point, restoring its dynamic collider. */
+  throwHeld(character: Character, targetX: number, targetZ: number, power = 3.8): string | null {
     const item = this.heldItems.get(character);
     if (!item) return null;
 
     const hand = character.getPickupHandPosition();
-    const yaw = character.visual.rotation.y;
+    const position = character.position;
+    const direction = new THREE.Vector3(targetX - position.x, 0, targetZ - position.z);
+    if (direction.lengthSq() < 0.01) {
+      const yaw = character.visual.rotation.y;
+      direction.set(Math.sin(yaw), 0, Math.cos(yaw));
+    }
+    direction.normalize();
+    const yaw = Math.atan2(direction.x, direction.z);
     const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-    const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
 
     item.body.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
     item.collider.setEnabled(true);
     item.body.setTranslation({ x: hand.x, y: hand.y, z: hand.z }, true);
     item.body.setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w }, true);
     item.body.setLinvel({
-      x: forward.x * throwStrength,
-      y: 1.8,
-      z: forward.z * throwStrength,
+      x: direction.x * Math.max(1.2, Math.min(6, power)),
+      y: 1.8 + Math.min(1.2, power * 0.16),
+      z: direction.z * Math.max(1.2, Math.min(6, power)),
     }, true);
     item.body.setAngvel({
-      x: -forward.z * 2.2,
+      x: -direction.z * 2.2,
       y: 1.4,
-      z: forward.x * 2.2,
+      z: direction.x * 2.2,
     }, true);
 
     item.heldBy = null;
     this.heldItems.delete(character);
     return item.label;
   }
+
 
   dispose(): void {
     for (const item of this.items) {
