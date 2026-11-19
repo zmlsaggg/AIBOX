@@ -235,7 +235,7 @@ button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
     linear-gradient(180deg, rgba(3, 7, 8, .22), transparent 18%, transparent 76%, rgba(3, 7, 8, .32)),
     radial-gradient(ellipse at center, transparent 48%, rgba(3, 7, 8, .28) 100%);
 }
-#world-canvas { filter: saturate(.82) contrast(1.04); }
+#world-canvas { filter: saturate(1.12) contrast(1.08) brightness(1.04); }
 .map-compass {
   position: absolute;
   z-index: 2;
