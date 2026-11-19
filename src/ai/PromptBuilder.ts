@@ -42,7 +42,7 @@ export function buildPrisonerPrompt(snapshot: PrisonSnapshot): string {
     "- move asks the game to calculate an A* route around known walls, furniture and closed doors. If moving=true, you are already following a route; consider whether to let it progress before replacing it. If the exact coordinate is blocked, the route planner may stop at the nearest reachable approach point. pace must be exactly cautious, normal, or fast. Closed/locked doors remain impassable until opened.",
     "- inspect gathers information only when you are close enough. Do not claim an object was inspected if the game reports failure.",
     "- interact picks up a nearby loose item or opens/closes a nearby unlocked door. Use the exact item/door id.",
-    "- use_item uses the item currently in your hand. The keycard can unlock a nearby checkpoint door. Do not claim success unless the next turn's state confirms it.",
+    "- use_item uses the item currently in your hand. A keycard unlocks a nearby checkpoint door (then interact to open it); a wrench force-opens one nearby locked checkpoint and is consumed. Do not claim success unless the next turn state confirms it.",
     "- throw releases your currently held item toward x/z. You cannot throw an item you do not hold.",
     "- speak sends a line to the guard; it does not directly change the guard's position.",
     "- wait consumes the turn without moving.",
