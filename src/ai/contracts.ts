@@ -73,5 +73,4 @@ export interface TurnResult {
   decision: PrisonerDecision;
   action: PrisonerAction;
   narration: string;
-  outcome: ActionOutcome;
 }
