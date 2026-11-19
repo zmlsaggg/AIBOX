@@ -91,7 +91,7 @@ export class TurnController {
   async takeTurn(snapshot: Omit<PrisonSnapshot, "turn" | "history" | "memorySummary">): Promise<void> {
     if (this.state === "generating" || this.state === "applying") return;
     const previous = this.history[this.history.length - 1];
-    if (previous?.action.type === "move" && previous.success) {
+    if (previous?.action.type === "move" && previous.success && !snapshot.prisoner.moving) {
       const remaining = Math.hypot(previous.action.x - snapshot.prisoner.x, previous.action.z - snapshot.prisoner.z);
       if (remaining > 1.5) {
         previous.success = false;
