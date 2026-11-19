@@ -418,7 +418,8 @@ export class PrisonLayout {
     });
     const key = (column: number, row: number) => `${column},${row}`;
     const start = toCell(startX, startZ);
-    const goal = toCell(targetX, targetZ);
+    let goal = toCell(targetX, targetZ);
+    const requestedTarget = { x: Math.max(-11.5, Math.min(13.5, targetX)), z: Math.max(-8.5, Math.min(8.5, targetZ)) };
 
     const obstacles = [
       { x: -12, z: 0, hw: 0.24, hd: 9.2 },
@@ -453,19 +454,44 @@ export class PrisonLayout {
       obstacles.push({ x: -6.5, z: -0.2, hw: 5.5, hd: 0.2 }, { x: 6.5, z: -0.2, hw: 5.5, hd: 0.2 });
     }
 
-    const isBlocked = (column: number, row: number): boolean => {
-      const point = toWorld(column, row);
-      if (point.x < -11.55 || point.x > 13.55 || point.z < -8.55 || point.z > 8.55) return true;
-      if (obstacles.some((rect) => Math.abs(point.x - rect.x) < rect.hw + 0.22 && Math.abs(point.z - rect.z) < rect.hd + 0.22)) return true;
+    const isBlockedAt = (x: number, z: number): boolean => {
+      if (x < -11.55 || x > 13.55 || z < -8.55 || z > 8.55) return true;
+      if (obstacles.some((rect) => Math.abs(x - rect.x) < rect.hw + 0.22 && Math.abs(z - rect.z) < rect.hd + 0.22)) return true;
       for (const door of this.doors.values()) {
         if (door.open) continue;
-        if (Math.abs(point.x - door.position.x) < door.width / 2 + 0.22
-          && Math.abs(point.z - door.position.z) < door.depth / 2 + 0.22) return true;
+        if (Math.abs(x - door.position.x) < door.width / 2 + 0.22
+          && Math.abs(z - door.position.z) < door.depth / 2 + 0.22) return true;
       }
       return false;
     };
+    const isBlocked = (column: number, row: number): boolean => {
+      const point = toWorld(column, row);
+      return isBlockedAt(point.x, point.z);
+    };
 
-    if (isBlocked(goal.column, goal.row)) return null;
+    let finalDestination = requestedTarget;
+    if (isBlockedAt(requestedTarget.x, requestedTarget.z) || isBlocked(goal.column, goal.row)) {
+      let nearest: { column: number; row: number; distance: number } | null = null;
+      for (let radius = 1; radius <= 4; radius += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          for (let dz = -radius; dz <= radius; dz += 1) {
+            if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
+            const column = goal.column + dx;
+            const row = goal.row + dz;
+            if (column < 0 || column > maxColumn || row < 0 || row > maxRow || isBlocked(column, row)) continue;
+            const point = toWorld(column, row);
+            const distance = Math.hypot(point.x - requestedTarget.x, point.z - requestedTarget.z);
+            if (distance > 1.6 || (nearest && distance >= nearest.distance)) continue;
+            nearest = { column, row, distance };
+          }
+        }
+        if (nearest) break;
+      }
+      if (!nearest) return null;
+      goal = { column: nearest.column, row: nearest.row };
+      finalDestination = toWorld(goal.column, goal.row);
+    }
+
     const startKey = key(start.column, start.row);
     const goalKey = key(goal.column, goal.row);
     const open = [{ column: start.column, row: start.row, f: 0 }];
@@ -523,7 +549,7 @@ export class PrisonLayout {
       cursor = previous;
     }
     cells.reverse();
-    if (!cells.length) return [{ x: targetX, z: targetZ }];
+    if (!cells.length) return [finalDestination];
 
     const compressed: Array<{ column: number; row: number }> = [];
     for (let index = 0; index < cells.length; index += 1) {
@@ -539,7 +565,7 @@ export class PrisonLayout {
       if (firstDirection[0] !== nextDirection[0] || firstDirection[1] !== nextDirection[1]) compressed.push(current);
     }
     return compressed.map((cell, index) => {
-      if (index === compressed.length - 1) return { x: targetX, z: targetZ };
+      if (index === compressed.length - 1) return finalDestination;
       return toWorld(cell.column, cell.row);
     });
   }
