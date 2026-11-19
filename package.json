@@ -55,15 +55,18 @@
             "x64"
           ]
         }
-      ],
-      "artifactName": "AIBOX-${version}-${arch}-${target}.${ext}"
+      ]
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "AIBOX-${version}-Setup-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "AIBOX-${version}-Portable-${arch}.${ext}"
     }
   }
 }
