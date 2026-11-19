@@ -158,7 +158,7 @@ Each browser-provider response now returns a structured decision envelope:
 - up to three **alternative actions** shown in the AI cognition panel but not executed;
 - a short strategic intent, confidence estimate and memory update.
 
-The turn controller stores up to 30 completed actions and sends the latest 10, their real game outcomes, known facts, item positions, inventory, guard/prisoner positions and door lock/open states into every next prompt. A new shift starts with a clean memory because the simulation itself is not yet saved across reloads.
+The turn controller stores up to 30 completed actions and sends the latest 10, their real game outcomes, known facts, item positions, inventory, guard/prisoner positions and door lock/open states into every next prompt. If a provider omits alternatives, the game derives up to three safe, state-aware fallback suggestions without making another model call. A new shift starts with a clean memory because the simulation itself is not yet saved across reloads.
 
 Repeated failed actions are discouraged in the prompt and guarded in code: if the model repeats a recent failed action, the controller selects a distinct valid alternative or falls back to a safe reassessment wait. The next prompt also compares the previous movement target with the actual prisoner position and marks stalled movement as a failure.
 
