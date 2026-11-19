@@ -360,10 +360,53 @@ func _build_ui() -> void:
 	ui_root = Control.new()
 	ui_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(ui_root)
+	_apply_ui_theme()
 
 	_build_hud()
 	_build_intro()
 	_build_difficulty_overlay()
+
+func _apply_ui_theme() -> void:
+	var theme := Theme.new()
+	theme.default_font_size = 16
+	theme.set_color("font_color", "Label", Color("#dce8e1"))
+	theme.set_color("font_color", "Button", Color("#dce8e1"))
+	theme.set_color("font_hover_color", "Button", Color("#f1fff8"))
+	theme.set_color("font_pressed_color", "Button", Color("#091b17"))
+	theme.set_color("font_disabled_color", "Button", Color("#6d7a76"))
+
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color("#101a1e")
+	panel_style.border_color = Color("#33494a")
+	panel_style.set_border_width_all(1)
+	panel_style.set_corner_radius_all(9)
+	panel_style.content_margin_left = 20
+	panel_style.content_margin_right = 20
+	panel_style.content_margin_top = 17
+	panel_style.content_margin_bottom = 17
+	theme.set_stylebox("panel", "PanelContainer", panel_style)
+
+	var button_normal := StyleBoxFlat.new()
+	button_normal.bg_color = Color("#17272b")
+	button_normal.border_color = Color("#496663")
+	button_normal.set_border_width_all(1)
+	button_normal.set_corner_radius_all(6)
+	button_normal.content_margin_left = 14
+	button_normal.content_margin_right = 14
+	button_normal.content_margin_top = 10
+	button_normal.content_margin_bottom = 10
+
+	var button_hover := button_normal.duplicate() as StyleBoxFlat
+	button_hover.bg_color = Color("#20383a")
+	button_hover.border_color = Color("#79d7be")
+	var button_pressed := button_normal.duplicate() as StyleBoxFlat
+	button_pressed.bg_color = Color("#80d7bd")
+	button_pressed.border_color = Color("#80d7bd")
+	theme.set_stylebox("normal", "Button", button_normal)
+	theme.set_stylebox("hover", "Button", button_hover)
+	theme.set_stylebox("pressed", "Button", button_pressed)
+	theme.set_stylebox("focus", "Button", button_hover)
+	ui_root.theme = theme
 
 func _build_hud() -> void:
 	var header := PanelContainer.new()
@@ -505,6 +548,9 @@ func _new_overlay() -> ColorRect:
 func _show_difficulty() -> void:
 	intro_overlay.visible = false
 	start_overlay.visible = true
+	start_overlay.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(start_overlay, "modulate:a", 1.0, 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _begin_shift() -> void:
 	var budgets := [1400, 1800, 2400, 3200]
@@ -512,9 +558,11 @@ func _begin_shift() -> void:
 	shift_started = true
 	guard.call("set_active", true)
 	prisoner.call("set_active", true)
-	start_overlay.visible = false
 	status_label.text = "FACILITY ACTIVE"
 	event_label.text = "Смена началась. Доступно физическое управление персонажем и предметами."
+	var tween := create_tween()
+	tween.tween_property(start_overlay, "modulate:a", 0.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): start_overlay.visible = false)
 	_update_hud()
 
 func _update_hud() -> void:
