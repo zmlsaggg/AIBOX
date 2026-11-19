@@ -8,12 +8,13 @@ import { PickupSystem } from "./PickupSystem";
 import { DemoProvider } from "../ai/DemoProvider";
 import type { AIProvider } from "../ai/contracts";
 import { TurnController, type TurnState } from "../ai/TurnController";
-import type { PrisonDifficulty, TurnResult } from "../ai/contracts";
+import type { ActionOutcome, PrisonDifficulty, PrisonerDecision, TurnMemoryEntry, TurnResult } from "../ai/contracts";
 
 export interface GameCallbacks {
   onEvent: (message: string, tone?: "normal" | "warning" | "success") => void;
   onTurnState: (state: TurnState, detail?: string) => void;
   onStats: (stats: GameStats) => void;
+  onDecision: (decision: PrisonerDecision, history: TurnMemoryEntry[], memorySummary: string) => void;
 }
 
 export interface GameStats {
@@ -51,6 +52,7 @@ export class Game {
   private touchZ = 0;
   private readonly callbacks: GameCallbacks;
   private readonly difficulty: PrisonDifficulty;
+  private readonly knownFacts: string[] = [];
 
   private animationFrame = 0;
   private previousTime = 0;
@@ -122,6 +124,7 @@ export class Game {
       provider,
       (result) => this.applyPrisonerAction(result),
       (state, detail) => this.callbacks.onTurnState(state, detail),
+      (decision, history, memorySummary) => this.callbacks.onDecision(decision, history, memorySummary),
     );
 
     this.resize();
@@ -233,22 +236,42 @@ export class Game {
     this.animationFrame = requestAnimationFrame(this.loop);
   };
 
-  private applyPrisonerAction(result: TurnResult): void {
+  private applyPrisonerAction(result: TurnResult): ActionOutcome {
     this.turn = result.turn;
     const action = result.action;
     this.lastAction = result.narration;
+    let outcome: ActionOutcome = { success: true, summary: action.narration };
 
     switch (action.type) {
       case "move":
-        this.prisoner.moveTo(action.x, action.z);
-        this.callbacks.onEvent(`ИИ перемещается: ${action.narration}`);
+        this.prisoner.moveTo(action.x, action.z, action.pace);
+        outcome = {
+          success: true,
+          summary: `Movement order accepted toward (${action.x.toFixed(1)}, ${action.z.toFixed(1)}) at ${action.pace} pace. Actual position will be checked on the next turn.`,
+        };
+        this.callbacks.onEvent(`ИИ перемещается (${action.pace}): ${action.narration}`);
         break;
-      case "inspect":
-        this.callbacks.onEvent(`ИИ осматривает «${action.target}»: ${action.narration}`);
+
+      case "inspect": {
+        const inspected = this.inspectTarget(action.target);
+        outcome = inspected
+          ? { success: true, summary: inspected }
+          : { success: false, summary: `Inspection failed: "${action.target}" is unknown or outside reach.` };
+        if (inspected) {
+          this.knownFacts.push(inspected);
+          this.knownFacts.splice(0, Math.max(0, this.knownFacts.length - 12));
+        }
+        this.callbacks.onEvent(
+          inspected ? `ИИ осматривает «${action.target}»: ${inspected}` : `ИИ не смог осмотреть «${action.target}»: объект неизвестен или слишком далеко.`,
+          inspected ? "success" : "warning",
+        );
         break;
+      }
+
       case "interact": {
         const picked = this.pickups.pickupNearest(this.prisoner, 2.4, action.target);
         if (picked) {
+          outcome = { success: true, summary: `Started pickup animation for ${action.target}; item will enter inventory when the grab animation completes.` };
           this.callbacks.onEvent(`ИИ наклоняется и подбирает: ${picked}.`, "success");
           break;
         }
@@ -261,26 +284,98 @@ export class Game {
         const nearest = directOpen === null && ["door", "nearest-door", "gate", "exit"].includes(target)
           ? this.layout.toggleNearestDoor(position.x, position.z, 2.4)
           : directOpen === null ? null : { id: action.target, open: directOpen };
-        this.callbacks.onEvent(
-          nearest
-            ? `ИИ взаимодействует с дверью ${nearest.id}: ${nearest.open ? "открыта" : "закрыта"}`
-            : `ИИ не может взаимодействовать с «${action.target}»: объект не является доступной дверью или находится слишком далеко.`,
-          nearest?.open ? "warning" : "normal",
-        );
+        if (nearest) {
+          outcome = { success: true, summary: `Door ${nearest.id} is now ${nearest.open ? "open" : "closed"}.` };
+          this.callbacks.onEvent(`ИИ взаимодействует с дверью ${nearest.id}: ${nearest.open ? "открыта" : "закрыта"}`, nearest.open ? "success" : "normal");
+        } else {
+          const door = this.layout.getDoorStates().find((entry) => entry.id.toLowerCase() === target);
+          outcome = {
+            success: false,
+            summary: door?.locked
+              ? `Interaction failed: ${door.id} is locked. Find and use the keycard before trying again.`
+              : `Interaction failed: "${action.target}" is not a nearby usable item or unlocked door.`,
+          };
+          this.callbacks.onEvent(`ИИ не может взаимодействовать с «${action.target}»: ${outcome.summary}`, "warning");
+        }
         break;
       }
+
+      case "use_item": {
+        const heldItem = this.pickups.getHeldItemId(this.prisoner);
+        const position = this.prisoner.position;
+        if (heldItem !== "keycard") {
+          outcome = { success: false, summary: `Cannot use item: currently holding ${heldItem ?? "nothing"}; a keycard is required for checkpoint locks.` };
+        } else if (this.layout.unlockDoorNear(action.target, position.x, position.z, 2.4)) {
+          outcome = { success: true, summary: `Keycard successfully unlocked ${action.target}. The door must still be opened separately.` };
+        } else {
+          const door = this.layout.getDoorStates().find((entry) => entry.id === action.target);
+          outcome = {
+            success: false,
+            summary: door
+              ? `Keycard use failed: ${door.id} is already unlocked or you are too far away.`
+              : `Keycard use failed: no lock named ${action.target} exists.`,
+          };
+        }
+        this.callbacks.onEvent(outcome.summary, outcome.success ? "success" : "warning");
+        break;
+      }
+
+      case "throw": {
+        const thrown = this.pickups.throwHeld(this.prisoner, action.x, action.z, action.power);
+        outcome = thrown
+          ? { success: true, summary: `Threw ${thrown} toward (${action.x.toFixed(1)}, ${action.z.toFixed(1)}) with power ${action.power.toFixed(1)}.` }
+          : { success: false, summary: "Throw failed: the prisoner is not holding an item." };
+        this.callbacks.onEvent(outcome.summary, outcome.success ? "success" : "warning");
+        break;
+      }
+
       case "speak":
+        outcome = { success: true, summary: `Spoke to the guard: "${action.message}". No movement or door state changed.` };
         this.callbacks.onEvent(`ЗАКЛЮЧЁННЫЙ: «${action.message}»`, "warning");
         break;
+
       case "wait":
+        outcome = { success: true, summary: "Waited one turn without changing position or inventory." };
         this.callbacks.onEvent(`ИИ выжидает: ${action.narration}`);
         break;
     }
+
+    this.lastAction = outcome.summary;
     if (this.turn > 0 && this.turn % 3 === 0 && !this.hasEscaped) {
       this.money += 120;
       this.callbacks.onEvent("Премия за удержание заключённого: +$120.", "success");
     }
     this.emitStats();
+    return outcome;
+  }
+
+  private inspectTarget(targetName: string): string | null {
+    const target = targetName.trim().toLowerCase();
+    const position = this.prisoner.position;
+    const maxDistance = 3.1;
+    const items = this.pickups.getItemStates();
+    const item = items.find((entry) => entry.id === target || entry.label.toLowerCase() === target);
+    if (item) {
+      if (Math.hypot(item.x - position.x, item.z - position.z) > maxDistance) return null;
+      return `Confirmed item: ${item.id} (${item.label}); ${item.held ? "currently held/reserved" : "loose on the floor"}.`;
+    }
+
+    const door = this.layout.getDoorStates().find((entry) => entry.id.toLowerCase() === target);
+    if (door) {
+      if (Math.hypot(door.x - position.x, door.z - position.z) > maxDistance) return null;
+      return `Door ${door.id}: ${door.open ? "open" : "closed"}, ${door.locked ? "locked; keycard required" : "unlocked"}.`;
+    }
+
+    const props: Array<{ id: string; aliases: string[]; x: number; z: number; detail: string }> = [
+      { id: "bed", aliases: ["bed", "cot"], x: -9.2, z: -5.1, detail: "Metal bunk with a thin mattress. It is fixed to the floor and cannot be moved." },
+      { id: "sink", aliases: ["sink", "washbasin"], x: -8.8, z: -2.5, detail: "A fixed metal sink. No loose tool or usable mechanism is currently attached." },
+      { id: "ventilation", aliases: ["ventilation", "vent"], x: 2.3, z: -7.7, detail: "A bolted ventilation grille. It is a visible environmental prop; no traversable duct route is implemented yet." },
+      { id: "terminal", aliases: ["terminal", "control-terminal"], x: -8.9, z: 5.4, detail: "A wall-mounted control terminal. Its interface is currently decorative and cannot be hacked." },
+      { id: "desk", aliases: ["desk", "table"], x: -3.2, z: 6.7, detail: "A fixed metal desk near the control area." },
+    ];
+    const prop = props.find((entry) => entry.id === target || entry.aliases.includes(target));
+    if (!prop || Math.hypot(prop.x - position.x, prop.z - position.z) > maxDistance) return null;
+    return prop.detail;
   }
 
   setTouchMovement(x: number, z: number): void {
@@ -363,17 +458,32 @@ export class Game {
   }
 
   async takeAITurn(): Promise<void> {
+    if (this.hasEscaped) {
+      this.callbacks.onEvent("Смена завершена: заключённый уже покинул периметр.", "warning");
+      return;
+    }
     const position = this.prisoner.position;
+    const guardPosition = this.guard.position;
     await this.turnController.takeTurn({
       difficulty: this.difficulty,
-      prisoner: { x: position.x, z: position.z, status: "в камере" },
+      prisoner: {
+        x: position.x,
+        z: position.z,
+        status: "в камере",
+        heldItem: this.pickups.getHeldItemId(this.prisoner),
+      },
+      guard: { x: guardPosition.x, z: guardPosition.z },
       visibleObjects: [
         "cell-door", "west-cell-door", "control-door", "outer-exit",
         ...(this.difficulty !== "standard" ? ["checkpoint-one"] : []),
         ...(this.difficulty === "special" || this.difficulty === "black-dolphin" ? ["checkpoint-two"] : []),
         ...(this.difficulty === "black-dolphin" ? ["checkpoint-three"] : []),
-        "ventilation", "bed", "sink", "keycard", "wrench", "canteen",
+        "ventilation", "bed", "sink", "terminal", "desk", "keycard", "wrench", "canteen",
       ],
+      doorStates: this.layout.getDoorStates(),
+      looseItems: this.pickups.getItemStates(),
+      knownFacts: this.knownFacts,
+      objective: "Reach the outer-exit door at the east perimeter, unlock any checkpoint locks with the keycard, open the final exit, and move beyond the perimeter.",
       recentEvents: [this.lastAction],
     });
   }
