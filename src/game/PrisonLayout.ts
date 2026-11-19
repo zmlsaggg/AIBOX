@@ -324,29 +324,29 @@ export class PrisonLayout {
       new THREE.BoxGeometry(Math.max(0.12, width - 0.2), 0.12, depth + 0.025),
       this.materials.darkMetal,
     );
-    inset.position.set(0, -height / 2 + 0.32, 0);
+    inset.position.set(0, 0.32, 0);
     mesh.add(inset);
     const indicator = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, depth + 0.05), this.materials.amber);
-    indicator.position.set(0, -height / 2 + 0.82, 0);
+    indicator.position.set(0, 0.82, 0);
     mesh.add(indicator);
     const slot = new THREE.Mesh(new THREE.BoxGeometry(Math.min(0.58, width * 0.42), 0.18, depth + 0.04), this.materials.darkMetal);
-    slot.position.set(0, -height / 2 + 0.35, 0);
+    slot.position.set(0, 0.35, 0);
     mesh.add(slot);
     if (width > 0.8) {
       const barCount = Math.max(3, Math.floor(width * 3));
       for (let index = 0; index < barCount; index += 1) {
         const barX = -width * 0.38 + (index / (barCount - 1)) * width * 0.76;
         const bar = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.3, depth + 0.06), this.materials.metal);
-        bar.position.set(barX, -height / 2 + 0.35, 0);
+        bar.position.set(barX, 0.35, 0);
         mesh.add(bar);
       }
     }
     const handle = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.2, 0.075), this.materials.trim);
-    handle.position.set(width * 0.34, -height / 2 + 0.88, depth > width ? 0.08 : 0);
+    handle.position.set(width * 0.34, 0.88, depth > width ? 0.08 : 0);
     mesh.add(handle);
     for (const side of [-1, 1]) {
       const bolt = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), this.materials.trim);
-      bolt.position.set(side * Math.max(0.08, width * 0.42), -height / 2 + 0.72, 0.03);
+      bolt.position.set(side * Math.max(0.08, width * 0.42), 0.72, 0.03);
       mesh.add(bolt);
     }
 
