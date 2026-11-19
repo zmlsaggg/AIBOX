@@ -210,7 +210,7 @@ export class Character {
         this.target = next ?? null;
         this.targetLifetime = 0;
         this.targetDirection.set(0, 0);
-      } else if (this.targetLifetime > 8) {
+      } else if (this.targetLifetime > 45) {
         this.target = null;
         this.waypoints.length = 0;
         this.targetDirection.set(0, 0);
