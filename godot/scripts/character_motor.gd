@@ -12,6 +12,9 @@ var move_target: Vector3 = Vector3.ZERO
 var has_move_target: bool = false
 var gait_clock: float = 0.0
 var active: bool = false
+var animation_player: AnimationPlayer
+var idle_animation: StringName = &""
+var walk_animation: StringName = &""
 
 @onready var visual_root: Node3D = get_node_or_null("VisualRoot")
 @onready var left_leg: Node3D = get_node_or_null("VisualRoot/LeftLeg")
@@ -32,6 +35,31 @@ func set_move_target(target: Vector3) -> void:
 
 func clear_move_target() -> void:
 	has_move_target = false
+
+func set_animation_player(player: AnimationPlayer) -> void:
+	animation_player = player
+	idle_animation = _find_animation(["idle", "stand", "breath"])
+	walk_animation = _find_animation(["walk", "run", "move"])
+
+func _find_animation(terms: Array[String]) -> StringName:
+	if animation_player == null:
+		return &""
+	for animation_name in animation_player.get_animation_list():
+		var lowered := animation_name.to_lower()
+		for term in terms:
+			if lowered.contains(term):
+				return StringName(animation_name)
+	return &""
+
+func _play_model_animation(moving: bool) -> bool:
+	if animation_player == null:
+		return false
+	var clip := walk_animation if moving and walk_animation != &"" else idle_animation
+	if clip == &"":
+		return false
+	if animation_player.current_animation != String(clip) or not animation_player.is_playing():
+		animation_player.play(clip, 0.16)
+	return true
 
 func _physics_process(delta: float) -> void:
 	var desired_direction := Vector3.ZERO
@@ -84,6 +112,8 @@ func _physics_process(delta: float) -> void:
 
 func _update_animation(delta: float, moving: bool, speed: float) -> void:
 	if visual_root == null:
+		return
+	if _play_model_animation(moving and speed > 0.12):
 		return
 	if moving and speed > 0.12:
 		gait_clock += delta * (5.2 + speed * 1.7)
