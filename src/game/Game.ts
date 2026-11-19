@@ -259,8 +259,8 @@ export class Game {
           ? {
               success: true,
               summary: reachedRequestedTarget
-                ? `A* verified a traversable route with ${route.length} waypoint(s) to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}). Actual progress will be checked on the next turn.`
-                : `A* found a safe approach route with ${route.length} waypoint(s). Requested point was blocked; actual reachable endpoint is (${resolvedTarget.x.toFixed(1)}, ${resolvedTarget.z.toFixed(1)}). Stop here and re-evaluate the obstacle or door.`,
+                ? `A* verified a traversable route with ${route?.length ?? 0} waypoint(s) to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}). Actual progress will be checked on the next turn.`
+                : `A* found a safe approach route with ${route?.length ?? 0} waypoint(s). Requested point was blocked; actual reachable endpoint is (${resolvedTarget.x.toFixed(1)}, ${resolvedTarget.z.toFixed(1)}). Stop here and re-evaluate the obstacle or door.`,
               resolvedMoveTarget: { x: resolvedTarget.x, z: resolvedTarget.z },
             }
           : {
