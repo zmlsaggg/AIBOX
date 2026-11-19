@@ -168,15 +168,13 @@ let eventNumber = 0;
 const introOverlay = document.querySelector<HTMLDivElement>("#intro-overlay");
 const startOverlay = document.querySelector<HTMLDivElement>("#start-overlay");
 const introEnter = document.querySelector<HTMLButtonElement>("#intro-enter");
-const bridgeHelpToggle = document.querySelector<HTMLButtonElement>("#bridge-help-toggle");
-const bridgeHelpSteps = document.querySelector<HTMLDivElement>("#bridge-help-steps");
-if (!introOverlay || !startOverlay || !introEnter || !bridgeHelpToggle || !bridgeHelpSteps) {
-  throw new Error("Missing startup or browser-bridge setup controls");
+if (!introOverlay || !startOverlay || !introEnter) {
+  throw new Error("Missing startup splash or difficulty selection controls");
 }
 
 function enterFacility(): void {
-  introOverlay?.classList.add("hidden");
-  startOverlay?.classList.remove("hidden");
+  introOverlay.classList.add("hidden");
+  startOverlay.classList.remove("hidden");
 }
 
 introEnter.addEventListener("click", enterFacility);
@@ -186,13 +184,6 @@ window.addEventListener("keydown", (event) => {
   if (target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName)) return;
   event.preventDefault();
   enterFacility();
-});
-
-bridgeHelpToggle.addEventListener("click", () => {
-  const expanded = bridgeHelpToggle.getAttribute("aria-expanded") === "true";
-  bridgeHelpToggle.setAttribute("aria-expanded", String(!expanded));
-  bridgeHelpSteps.hidden = expanded;
-  bridgeHelpToggle.textContent = expanded ? "КАК ПОЛУЧИТЬ PAIRING TOKEN?" : "СКРЫТЬ ИНСТРУКЦИЮ";
 });
 
 const $ = <T extends HTMLElement>(selector: string): T => {
