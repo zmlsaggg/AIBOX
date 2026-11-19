@@ -6,12 +6,14 @@ This folder is the native game project. Open it with **Godot 4.7.2 Stable (stand
 
 - 3D prison block with solid walls, partitions, reinforced windows and collidable furniture.
 - Orthographic camera and cinematic light setup.
-- Player warden and prisoner use CharacterBody3D; movement uses acceleration, braking, sprint, floor snapping and move_and_slide().
+- Player warden and prisoner use CharacterBody3D with imported Quaternius SWAT and Punk GLB models; movement uses acceleration, braking, sprint, floor snapping and move_and_slide().
 - Doors use AnimatableBody3D, so their collision moves with the door animation.
 - Keycard, wrench and canteen use RigidBody3D; E picks up a nearby item/door and Q drops and throws a held item.
 - CCTV cameras rotate gently; characters have procedural walk and idle motion.
 - Fullscreen intro and difficulty selection HUD.
-- A strict native action validator accepts safe move/wait JSON actions.
+- A native AStarGrid2D planner samples real physics colliders and generates safe waypoint chains around walls, furniture and closed doors.
+- The native action validator rejects impossible move targets and sends characters along the validated waypoint path.
+- Navigation briefing options can be queried for reachable objects, approach points and blocked targets.
 
 ## Controls
 
@@ -25,11 +27,14 @@ This folder is the native game project. Open it with **Godot 4.7.2 Stable (stand
 ## Run
 
 1. Install Godot 4.7.2 Stable.
-2. Import this folder in the Godot Project Manager (or open project.godot).
-3. Press F6/F5 or run the main scene.
+2. Download the pinned CC0 character models:
+   - Windows: `powershell -ExecutionPolicy Bypass -File .\\scripts\\download_assets.ps1`
+   - Linux/macOS: `bash scripts/download_assets.sh`
+3. Import this folder in the Godot Project Manager (or open project.godot).
+4. Press F6/F5 or run the main scene.
 
 The GitHub CI job runs a headless import and short runtime smoke test using the pinned 4.7.2 version.
 
 ## Migration status
 
-This is the first native vertical slice, not yet a full replacement of the older TypeScript prototype. AI website sessions, A* navigation, vision cones, full guard patrols, inventory/economy parity, saving, and platform exports are still to be ported and validated. Do not remove the reference build until those systems are complete.
+This is the next native vertical slice, not yet a full replacement of the older TypeScript prototype. Collision-aware route planning and the first rigged guard/prisoner models are now present. AI website sessions, vision cones, full guard patrols, inventory/economy parity, saving, and platform exports are still to be ported and validated. Do not remove the reference build until those systems are complete.
