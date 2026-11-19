@@ -13,6 +13,7 @@ interface Door {
   body: Body;
   collider: Collider;
   open: boolean;
+  locked: boolean;
   position: THREE.Vector3;
   hinge: THREE.Vector3;
   offset: THREE.Vector3;
@@ -364,6 +365,7 @@ export class PrisonLayout {
       body,
       collider,
       open: false,
+      locked: id.startsWith("checkpoint-"),
       position: new THREE.Vector3(x, 0, z),
       hinge,
       offset,
@@ -394,10 +396,28 @@ export class PrisonLayout {
 
   toggleDoor(id: string): boolean | null {
     const door = this.doors.get(id);
-    if (!door) return null;
+    if (!door || door.locked) return null;
     door.open = !door.open;
     door.targetAngle = door.open ? (["outer-exit", "west-cell-door", "control-door"].includes(id) ? -1.28 : 1.28) : 0;
     return door.open;
+  }
+
+  unlockDoorNear(id: string, x: number, z: number, maxDistance = 2.4): boolean {
+    const door = this.doors.get(id);
+    if (!door || Math.hypot(door.position.x - x, door.position.z - z) > maxDistance) return false;
+    if (!door.locked) return false;
+    door.locked = false;
+    return true;
+  }
+
+  getDoorStates(): Array<{ id: string; open: boolean; locked: boolean; x: number; z: number }> {
+    return Array.from(this.doors.values()).map((door) => ({
+      id: door.id,
+      open: door.open,
+      locked: door.locked,
+      x: door.position.x,
+      z: door.position.z,
+    }));
   }
 
   toggleDoorNear(id: string, x: number, z: number, maxDistance = 2.4): boolean | null {
