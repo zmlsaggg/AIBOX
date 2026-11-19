@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import type { PrisonDifficulty } from "../ai/contracts";
+import type { NavigationOption, NavigationSnapshot, PrisonDifficulty, PrisonItemState } from "../ai/contracts";
 
 type PhysicsWorld = InstanceType<typeof RAPIER.World>;
 type Collider = ReturnType<PhysicsWorld["createCollider"]>;
@@ -576,6 +576,104 @@ export class PrisonLayout {
       if (index === compressed.length - 1) return finalDestination;
       return toWorld(cell.column, cell.row);
     });
+  }
+
+  /**
+   * Build a compact, authoritative navigation briefing for the AI.
+   * Every option is generated with the same A* grid, obstacle margins and door
+   * states used by actual movement; an AI never has to guess whether a listed
+   * route is currently traversable.
+   */
+  getNavigationSnapshot(startX: number, startZ: number, items: PrisonItemState[]): NavigationSnapshot {
+    const reachable: NavigationOption[] = [];
+    const blocked: NavigationSnapshot["blocked"] = [];
+    const candidates: Array<{
+      id: string;
+      kind: "item" | "door";
+      label: string;
+      x: number;
+      z: number;
+      locked: boolean;
+    }> = [];
+
+    for (const item of items) {
+      if (item.held) continue;
+      if (Math.hypot(item.x - startX, item.z - startZ) > 18) continue;
+      candidates.push({ id: item.id, kind: "item", label: item.label, x: item.x, z: item.z, locked: false });
+    }
+
+    for (const door of this.getDoorStates()) {
+      if (Math.hypot(door.x - startX, door.z - startZ) > 20) continue;
+      candidates.push({ id: door.id, kind: "door", label: door.id, x: door.x, z: door.z, locked: door.locked });
+    }
+
+    const makeOption = (
+      candidate: { id: string; kind: "item" | "door" | "area"; label: string; x: number; z: number; locked: boolean },
+      route: Array<{ x: number; z: number }>,
+    ): NavigationOption => {
+      let previous = { x: startX, z: startZ };
+      let distance = 0;
+      for (const point of route) {
+        distance += Math.hypot(point.x - previous.x, point.z - previous.z);
+        previous = point;
+      }
+      const approach = route[route.length - 1] ?? { x: startX, z: startZ };
+      return {
+        id: candidate.id,
+        kind: candidate.kind,
+        label: candidate.label,
+        targetX: candidate.x,
+        targetZ: candidate.z,
+        approachX: approach.x,
+        approachZ: approach.z,
+        distance: Number(distance.toFixed(1)),
+        reachesTarget: Math.hypot(approach.x - candidate.x, approach.z - candidate.z) <= 1.2,
+        locked: candidate.locked,
+        route: route.slice(0, 9).map((point) => ({ x: Number(point.x.toFixed(1)), z: Number(point.z.toFixed(1)) })),
+      };
+    };
+
+    for (const candidate of candidates) {
+      const route = this.findPath(startX, startZ, candidate.x, candidate.z);
+      if (!route) {
+        blocked.push({
+          id: candidate.id,
+          kind: candidate.kind,
+          label: candidate.label,
+          locked: candidate.locked,
+          reason: candidate.locked
+            ? "The door is locked; reach its near side and use a keycard or wrench first."
+            : "No route exists from the prisoner's current area with the present wall and door state.",
+        });
+        continue;
+      }
+      reachable.push(makeOption(candidate, route));
+    }
+
+    // A few open-space waypoints show the model that it may explore beyond
+    // the listed props. They are hints, not a closed list of legal destinations.
+    const areaCandidates = [
+      { id: "open-area-west", label: "Open area west", x: -9.8, z: 1.4 },
+      { id: "open-area-center", label: "Open area center", x: 1.8, z: 5.9 },
+      { id: "open-area-east", label: "Open area east", x: 9.7, z: 5.8 },
+      { id: "open-area-north", label: "North corridor", x: 1.8, z: -7.4 },
+      { id: "open-area-south", label: "South corridor", x: 8.8, z: 3.8 },
+    ];
+    const freeAreas: NavigationOption[] = [];
+    for (const area of areaCandidates) {
+      const route = this.findPath(startX, startZ, area.x, area.z);
+      if (!route) continue;
+      freeAreas.push(makeOption({ ...area, kind: "area", locked: false }, route));
+      if (freeAreas.length >= 4) break;
+    }
+
+    reachable.sort((a, b) => a.distance - b.distance);
+    blocked.sort((a, b) => Number(b.locked) - Number(a.locked));
+    return {
+      reachable: reachable.slice(0, 8),
+      blocked: blocked.slice(0, 8),
+      freeAreas,
+    };
   }
 
   toggleDoor(id: string): boolean | null {
