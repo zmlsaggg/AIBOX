@@ -9,6 +9,15 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue) -or -not (Get-Command 
 }
 
 $nodeVersion = (node -p "process.versions.node").Trim()
+try {
+    $parsedNodeVersion = [version]$nodeVersion
+} catch {
+    throw "Could not parse Node.js version: $nodeVersion"
+}
+if ($parsedNodeVersion -lt [version]"22.12.0") {
+    Write-Host "Node.js 22.12 or newer is required. Current version: $nodeVersion" -ForegroundColor Red
+    exit 1
+}
 Write-Host "Node.js $nodeVersion" -ForegroundColor Cyan
 Write-Host "Installing Browser Bridge dependencies..." -ForegroundColor Cyan
 npm install
