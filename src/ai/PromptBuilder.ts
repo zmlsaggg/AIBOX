@@ -49,7 +49,7 @@ export function buildPrisonerPrompt(snapshot: PrisonSnapshot): string {
     "STRATEGY AND MEMORY RULES:",
     "- Read the full recent turn history and memory before choosing. Every prior action has an outcome; treat failures as evidence about the world.",
     "- NEVER repeat the same failed action/target/coordinate unless something relevant has changed (position, inventory, door state, or new information).",
-    "- If an interaction failed because you were too far away, move closer before trying again. If a door is locked, find/use the keycard instead of toggling it repeatedly.",
+    "- If an interaction failed because you were too far away, move closer before trying again. If a checkpoint is locked, use the reusable keycard or spend the wrench to force it open; never toggle a locked door repeatedly.",
     "- Do not repeat an inspect that already produced the same fact unless the world changed.",
     "- Maintain a coherent multi-turn escape plan. Explain the immediate subgoal in intent; memoryUpdate should capture a durable lesson, not repeat narration.",
     "- alternatives should contain up to three genuinely different next actions, ordered by usefulness. Never include the primary action as an alternative.",
