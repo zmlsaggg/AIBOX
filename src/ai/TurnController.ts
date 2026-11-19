@@ -23,14 +23,14 @@ function fallbackAlternatives(snapshot: Omit<PrisonSnapshot, "turn" | "history" 
   const pz = snapshot.prisoner.z;
   const distance = (x: number, z: number) => Math.hypot(x - px, z - pz);
 
-  if (snapshot.prisoner.heldItem === "keycard") {
+  if (snapshot.prisoner.heldItem === "keycard" || snapshot.prisoner.heldItem === "wrench") {
     const locked = snapshot.doorStates
       .filter((door) => door.locked)
       .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
     if (locked) candidates.push({
       type: "use_item",
       target: locked.id,
-      narration: `Try the held keycard on ${locked.id}.`,
+      narration: `Try the held ${snapshot.prisoner.heldItem} on ${locked.id}.`,
     });
   }
 
