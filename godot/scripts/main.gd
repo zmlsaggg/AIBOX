@@ -492,6 +492,7 @@ func _build_difficulty_overlay() -> void:
 	difficulty_select.custom_minimum_size.y = 46
 	stack.add_child(difficulty_select)
 	_add_hud_button(stack, "BEGIN YOUR SHIFT", _begin_shift)
+	start_overlay.visible = false
 
 func _new_overlay() -> ColorRect:
 	var overlay := ColorRect.new()
