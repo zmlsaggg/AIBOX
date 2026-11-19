@@ -88,7 +88,29 @@ app.innerHTML = `
                 <input id="bridge-token" type="password" autocomplete="off" placeholder="Paste token from bridge terminal">
               </label>
               <button class="connect-browser-button" id="connect-browser">CONNECT BROWSER SESSION</button>
-              <small id="browser-connection-status">Not connected · local demo remains available</small>
+              <small id="browser-connection-status">Не подключено. Для реального ИИ нужен запущенный Browser Bridge.</small>
+              <div class="bridge-help">
+                <button class="bridge-help-toggle" id="bridge-help-toggle" type="button" aria-expanded="false">КАК ПОЛУЧИТЬ PAIRING TOKEN?</button>
+                <div class="bridge-help-steps" id="bridge-help-steps" hidden>
+                  <p><b>Токен создаётся автоматически.</b> Это не ключ ChatGPT или Qwen.</p>
+                  <ol>
+                    <li>Установи Node.js 22.12 или новее.</li>
+                    <li>Открой PowerShell и выполни команды:</li>
+                  </ol>
+                  <pre>git clone https://github.com/zmlsaggg/AIBOX.git
+cd AIBOX\\bridge
+npm install
+npx playwright install chromium
+npm start</pre>
+                  <ol start="3">
+                    <li>В терминале найди строку <b>Pairing token</b> и скопируй значение после двоеточия.</li>
+                    <li>Вставь значение в поле выше. Не закрывай окно PowerShell.</li>
+                    <li>Нажми CONNECT. Откроется Chromium — войди в выбранный ИИ-сервис вручную.</li>
+                    <li>Вернись в игру и нажми RUN AI TURN.</li>
+                  </ol>
+                  <p class="bridge-help-note">Токен локальный и секретный. Не публикуй его и не отправляй другим людям.</p>
+                </div>
+              </div>
             </div>
             <div class="ai-actions">
               <button class="primary-button" data-action="next-turn">RUN AI TURN <span>↗</span></button>
@@ -129,7 +151,22 @@ app.innerHTML = `
     </main>
     <footer class="bottom-bar"><span>AIBOX <b>v0.1.0</b></span><span>PHYSICS SANDBOX <i></i> LOCAL SESSION <i></i> NO API KEY</span><span>BUILT FOR THE ESCAPE EXPERIMENT</span></footer>
   </div>
-  <div class="start-overlay" id="start-overlay">
+  <div class="intro-overlay" id="intro-overlay">
+    <div class="intro-grain"></div>
+    <div class="intro-frame">
+      <div class="intro-kicker"><span class="live-dot"></span> AIBOX SECURITY NETWORK <span class="intro-separator">/</span> FACILITY 04</div>
+      <div class="intro-wordmark"><span>AI</span>BOX</div>
+      <div class="intro-subtitle">PRISON CONTROL SYSTEM</div>
+      <div class="intro-rule"></div>
+      <p class="intro-copy">ONE GUARD.<br>ONE PRISONER.<br><strong>ONE WAY OUT.</strong></p>
+      <p class="intro-description">A containment experiment is about to begin.<br>Observe the facility. Anticipate the escape.</p>
+      <button class="intro-enter" id="intro-enter" type="button">ENTER FACILITY <span>→</span></button>
+      <div class="intro-foot">PRESS ENTER TO CONTINUE <i></i> F11 FULLSCREEN <i></i> ALT + F4 EXIT</div>
+    </div>
+    <div class="intro-corner intro-corner-left">SYS / 04.11<br>STATUS: LOCKDOWN</div>
+    <div class="intro-corner intro-corner-right">AIBOX PROTOTYPE<br>BUILD 0.1.0</div>
+  </div>
+  <div class="start-overlay hidden" id="start-overlay">
     <div class="start-card">
       <div class="start-kicker"><span class="live-dot"></span> FACILITY INITIALIZATION</div>
       <div class="start-title"><span>AI</span>BOX</div>
@@ -152,6 +189,32 @@ const browserProvider = new BrowserProvider();
 let browserConnected = false;
 let selectedDifficulty: PrisonDifficulty = "standard";
 let eventNumber = 0;
+
+const introOverlay = $("#intro-overlay");
+const startOverlay = $("#start-overlay");
+
+function enterFacility(): void {
+  introOverlay.classList.add("hidden");
+  startOverlay.classList.remove("hidden");
+}
+
+$("#intro-enter").addEventListener("click", enterFacility);
+window.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || introOverlay.classList.contains("hidden")) return;
+  const target = event.target;
+  if (target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName)) return;
+  event.preventDefault();
+  enterFacility();
+});
+
+$("#bridge-help-toggle").addEventListener("click", () => {
+  const button = $("#bridge-help-toggle");
+  const steps = $("#bridge-help-steps");
+  const expanded = button.getAttribute("aria-expanded") === "true";
+  button.setAttribute("aria-expanded", String(!expanded));
+  steps.hidden = expanded;
+  button.textContent = expanded ? "КАК ПОЛУЧИТЬ PAIRING TOKEN?" : "СКРЫТЬ ИНСТРУКЦИЮ";
+});
 
 const $ = <T extends HTMLElement>(selector: string): T => {
   const element = document.querySelector<T>(selector);
