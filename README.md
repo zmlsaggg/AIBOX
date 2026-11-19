@@ -37,7 +37,8 @@ npm run preview
 | Input | Action |
 |---|---|
 | W / A / S / D or arrow keys | Move the warden |
-| E | Open/close a nearby door |
+| E | Pick up a nearby item or open/close a nearby unlocked door |
+| Q | Throw the item currently held by the guard |
 | Space | Trigger the alarm |
 | Overview / Cell Cam | Change the top-down camera preset |
 | Run AI Turn | Run one local demo prompt |
@@ -148,3 +149,27 @@ git push origin v0.1.1
 ```
 
 The release workflow waits for both platform builds to pass before publishing the release. Tags containing `alpha`, `beta` or `rc` are marked as prereleases.
+
+
+## Tactical AI decisions and memory
+
+Each browser-provider response now returns a structured decision envelope:
+- one **primary action** (the only action executed this turn);
+- up to three **alternative actions** shown in the AI cognition panel but not executed;
+- a short strategic intent, confidence estimate and memory update.
+
+The turn controller stores up to 30 completed actions and sends the latest 10, their real game outcomes, known facts, item positions, inventory, guard/prisoner positions and door lock/open states into every next prompt. A new shift starts with a clean memory because the simulation itself is not yet saved across reloads.
+
+Repeated failed actions are discouraged in the prompt and guarded in code: if the model repeats a recent failed action, the controller selects a distinct valid alternative or falls back to a safe reassessment wait. The next prompt also compares the previous movement target with the actual prisoner position and marks stalled movement as a failure.
+
+Additional AI action capabilities:
+- cautious / normal / fast movement orders;
+- inspect nearby props, doors and loose items to collect confirmed facts;
+- interact with nearby loose items and unlocked doors;
+- use the held keycard on nearby locked checkpoint doors;
+- throw a held item toward a selected world coordinate;
+- speak to the guard or spend a turn waiting.
+
+Only actions supported by the simulation are advertised. Ventilation and the control terminal are currently inspectable environmental props, not working escape routes or hackable systems. Alternative actions are suggestions for planning; the game still enforces exactly one executed action per prompt.
+
+The AI cognition panel displays the current intent, confidence, alternatives, strategy memory and recent action outcomes. The same browser provider tab is reused; no second provider tab or second model call is required to generate alternatives.
