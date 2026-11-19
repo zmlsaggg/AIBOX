@@ -29,7 +29,7 @@ export class TurnController {
   async takeTurn(snapshot: Omit<PrisonSnapshot, "turn">): Promise<void> {
     if (this.state === "generating" || this.state === "applying") return;
 
-    const turn = ++this.turn;
+    const turn = this.turn + 1;
     const generation = ++this.generation;
     const controller = new AbortController();
     this.controller = controller;
@@ -45,6 +45,7 @@ export class TurnController {
       const action = parsePrisonerAction(raw);
       this.setState("applying", `Ход ${turn}: проверка и применение действия`);
       this.apply({ turn, action, narration: action.narration });
+      this.turn = turn;
       this.setState("idle", `Ход ${turn} завершён`);
     } catch (error) {
       if (generation !== this.generation) return;
