@@ -70,13 +70,45 @@ func _ready() -> void:
 	ai_controller.action_result.connect(_on_ai_action_result)
 	add_child(ai_controller)
 
+func _procedural_noise(seed_value: int, as_normal: bool) -> NoiseTexture2D:
+	var noise := FastNoiseLite.new()
+	noise.seed = seed_value
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.frequency = 0.075
+	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	noise.fractal_octaves = 4
+	noise.fractal_lacunarity = 2.1
+	noise.fractal_gain = 0.42
+	var texture := NoiseTexture2D.new()
+	texture.width = 512
+	texture.height = 512
+	texture.seamless = true
+	texture.as_normal_map = as_normal
+	texture.bump_strength = 0.34 if as_normal else 1.0
+	texture.noise = noise
+	return texture
+
+func _add_material_surface_detail(material: StandardMaterial3D, seed_value: int, normal_scale: float, uv_scale: float) -> void:
+	material.uv1_triplanar = true
+	material.uv1_triplanar_sharpness = 1.8
+	material.uv1_scale = Vector3(uv_scale, uv_scale, uv_scale)
+	material.normal_enabled = true
+	material.normal_texture = _procedural_noise(seed_value, true)
+	material.normal_scale = normal_scale
+	material.roughness_texture = _procedural_noise(seed_value + 71, false)
+
 func _create_materials() -> void:
-	floor_material = _material(Color("#343e3c"), 0.92)
-	wall_material = _material(Color("#596461"), 0.93)
-	dark_wall_material = _material(Color("#25302f"), 0.9)
-	metal_material = _material(Color("#7b8986"), 0.48, 0.58)
-	guard_material = _material(Color("#435e69"), 0.76)
-	prisoner_material = _material(Color("#9a7957"), 0.78)
+	floor_material = _material(Color("#505653"), 0.9, 0.02)
+	wall_material = _material(Color("#7b8580"), 0.88)
+	dark_wall_material = _material(Color("#39464a"), 0.91)
+	metal_material = _material(Color("#9aa6aa"), 0.34, 0.78)
+	guard_material = _material(Color("#35485b"), 0.74)
+	prisoner_material = _material(Color("#c9794e"), 0.8)
+
+	_add_material_surface_detail(floor_material, 1701, 0.28, 0.85)
+	_add_material_surface_detail(wall_material, 1702, 0.2, 1.15)
+	_add_material_surface_detail(dark_wall_material, 1703, 0.24, 1.0)
+	_add_material_surface_detail(metal_material, 1704, 0.12, 1.8)
 
 func _material(color: Color, roughness: float, metallic: float = 0.0) -> StandardMaterial3D:
 	var result := StandardMaterial3D.new()
@@ -88,38 +120,115 @@ func _material(color: Color, roughness: float, metallic: float = 0.0) -> Standar
 func _create_world_environment() -> void:
 	var world_environment := WorldEnvironment.new()
 	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color("#0b1113")
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color("#9daea7")
-	environment.ambient_light_energy = 0.52
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	environment.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var sky_material := ProceduralSkyMaterial.new()
+	sky_material.sky_top_color = Color("#2d465a")
+	sky_material.sky_horizon_color = Color("#a5a08e")
+	sky_material.ground_horizon_color = Color("#343a3b")
+	sky_material.ground_bottom_color = Color("#121a20")
+	sky_material.use_debanding = true
+	sky.sky_material = sky_material
+	environment.sky = sky
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	environment.ambient_light_energy = 0.72
+	environment.ambient_light_sky_contribution = 0.82
+	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	environment.tonemap_mode = Environment.TONE_MAPPER_AGX
+	environment.tonemap_agx_contrast = 1.18
+	environment.adjustment_enabled = true
+	environment.adjustment_brightness = 1.08
+	environment.adjustment_contrast = 1.12
+	environment.adjustment_saturation = 1.12
+	environment.ssao_enabled = true
+	environment.ssao_radius = 0.72
+	environment.ssao_intensity = 1.05
+	environment.ssao_power = 1.25
+	environment.ssao_detail = 0.5
+	environment.ssao_horizon = 0.06
+	environment.ssao_sharpness = 0.95
+	environment.ssao_light_affect = 0.12
+	environment.ssil_enabled = true
+	environment.ssil_radius = 4.5
+	environment.ssil_intensity = 0.55
+	environment.ssil_sharpness = 0.92
+	environment.ssil_normal_rejection = 0.8
+	environment.ssr_enabled = true
+	environment.ssr_max_steps = 64
+	environment.ssr_fade_in = 0.15
+	environment.ssr_fade_out = 2.0
+	environment.ssr_depth_tolerance = 0.18
+	environment.volumetric_fog_enabled = true
+	environment.volumetric_fog_density = 0.012
+	environment.volumetric_fog_albedo = Color("#9caaa7")
+	environment.volumetric_fog_length = 28.0
+	environment.volumetric_fog_detail_spread = 2.1
+	environment.volumetric_fog_anisotropy = 0.35
+	environment.volumetric_fog_ambient_inject = 0.14
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.22
+	environment.glow_intensity = 0.28
+	environment.glow_bloom = 0.08
+	environment.glow_hdr_threshold = 1.25
+	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	world_environment.environment = environment
 	add_child(world_environment)
 
 	var key_light := DirectionalLight3D.new()
-	key_light.rotation_degrees = Vector3(-53.0, -31.0, 0.0)
-	key_light.light_color = Color("#e2d2b6")
-	key_light.light_energy = 0.72
+	key_light.rotation_degrees = Vector3(-52.0, -31.0, 0.0)
+	key_light.light_color = Color("#ffe1c2")
+	key_light.light_energy = 1.12
 	key_light.shadow_enabled = true
 	key_light.directional_shadow_max_distance = 38.0
+	key_light.directional_shadow_fade_start = 0.78
+	key_light.shadow_bias = 0.035
+	key_light.shadow_normal_bias = 1.4
 	add_child(key_light)
 
+	# Ceiling fixtures create bright pools, cool reflections and visible falloff.
 	for index in range(5):
-		var light := OmniLight3D.new()
-		light.position = Vector3(-9.0 + float(index) * 4.5, 3.2, -5.7 if index < 3 else 5.8)
-		light.omni_range = 7.2
-		light.light_energy = 1.55
-		light.light_color = Color("#d5c6a8")
-		light.shadow_enabled = index == 1 or index == 3
-		add_child(light)
+		var x_position := -9.0 + float(index) * 4.5
+		var spotlight := SpotLight3D.new()
+		spotlight.name = "Overhead fluorescent %02d" % index
+		spotlight.position = Vector3(x_position, 2.92, -0.1)
+		spotlight.rotation_degrees.x = -90.0
+		spotlight.light_color = Color("#d9e7f2") if index % 2 == 0 else Color("#f4d8b8")
+		spotlight.light_energy = 4.8
+		spotlight.spot_range = 12.0
+		spotlight.spot_angle = 58.0
+		spotlight.spot_angle_attenuation = 1.45
+		spotlight.light_size = 0.22
+		spotlight.shadow_enabled = index == 1 or index == 3
+		spotlight.shadow_bias = 0.04
+		spotlight.shadow_normal_bias = 1.3
+		add_child(spotlight)
+
+		var fixture_material := StandardMaterial3D.new()
+		fixture_material.albedo_color = Color("#e0e7e4")
+		fixture_material.roughness = 0.34
+		fixture_material.emission_enabled = true
+		fixture_material.emission = spotlight.light_color
+		fixture_material.emission_energy_multiplier = 1.35
+		var fixture := MeshInstance3D.new()
+		fixture.name = "Fluorescent light housing"
+		var fixture_mesh := BoxMesh.new()
+		fixture_mesh.size = Vector3(2.25, 0.055, 0.19)
+		fixture.mesh = fixture_mesh
+		fixture.material_override = fixture_material
+		fixture.position = Vector3(x_position, 2.98, -0.1)
+		add_child(fixture)
+
+	var cool_fill := OmniLight3D.new()
+	cool_fill.position = Vector3(0.0, 3.2, 6.0)
+	cool_fill.omni_range = 14.0
+	cool_fill.light_color = Color("#9ab9df")
+	cool_fill.light_energy = 0.65
+	cool_fill.shadow_enabled = false
+	add_child(cool_fill)
 
 	alarm_light = OmniLight3D.new()
 	alarm_light.position = Vector3(0.0, 3.0, 0.0)
 	alarm_light.omni_range = 15.0
-	alarm_light.light_color = Color("#e14e48")
+	alarm_light.light_color = Color("#ff3b42")
 	alarm_light.light_energy = 0.0
 	alarm_light.shadow_enabled = false
 	add_child(alarm_light)
@@ -340,7 +449,7 @@ func _create_camera_rig() -> void:
 	add_child(camera_rig)
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 25.5
+	camera.size = 23.8
 	camera.near = 0.1
 	camera.far = 100.0
 	camera.position = Vector3.ZERO
