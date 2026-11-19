@@ -14,6 +14,7 @@ interface PickupItem {
   collider: Collider;
   halfHeight: number;
   heldBy: Character | null;
+  reservedBy: Character | null;
 }
 
 export class PickupSystem {
@@ -113,13 +114,13 @@ export class PickupSystem {
         .setRestitution(0.12),
       body,
     );
-    this.items.push({ id, label, mesh, body, collider, halfHeight, heldBy: null });
+    this.items.push({ id, label, mesh, body, collider, halfHeight, heldBy: null, reservedBy: null });
   }
 
   /** Apply gravity only to loose items; the game world keeps zero gravity for character control. */
   applyGravity(delta: number): void {
     for (const item of this.items) {
-      if (item.heldBy) continue;
+      if (item.heldBy || item.reservedBy) continue;
       const position = item.body.translation();
       const velocity = item.body.linvel();
       const resting = position.y <= item.halfHeight + 0.025 && velocity.y <= 0.02;
@@ -170,13 +171,16 @@ export class PickupSystem {
 
     const item = nearest;
     const started = character.startPickup(() => {
+      item.reservedBy = null;
       item.heldBy = character;
       item.body.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased, true);
       item.collider.setEnabled(false);
       item.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
       this.heldItems.set(character, item);
     });
-    return started ? item.label : null;
+    if (!started) return null;
+    item.reservedBy = character;
+    return item.label;
   }
 
   dispose(): void {
