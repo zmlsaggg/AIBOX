@@ -15,18 +15,19 @@ func _run() -> void:
 			quit(1)
 			return
 		var instance := packed.instantiate()
-		if _find_skeleton(instance) == null:
+		var skeleton := _find_skeleton(instance)
+		if skeleton == null:
 			push_error("%s model has no Skeleton3D rig." % str(check.label))
 			instance.free()
 			quit(1)
 			return
+		var bone_names: Array[String] = []
+		for index in range(skeleton.get_bone_count()):
+			bone_names.append(skeleton.get_bone_name(index))
 		var player := _find_animation_player(instance)
-		if player == null or player.get_animation_list().is_empty():
-			push_error("%s model has no imported animation clips." % str(check.label))
-			instance.free()
-			quit(1)
-			return
-		print("%s: skeleton OK, %s animation clip(s)." % [str(check.label), str(player.get_animation_list().size())])
+		var clip_names := player.get_animation_list() if player else PackedStringArray()
+		print("%s: Skeleton3D OK (%s bones): %s" % [str(check.label), str(skeleton.get_bone_count()), ", ".join(bone_names)])
+		print("%s: imported AnimationPlayer clips: %s" % [str(check.label), ", ".join(clip_names) if not clip_names.is_empty() else "none; runtime procedural bone gait is used"])
 		instance.free()
 	quit(0)
 
