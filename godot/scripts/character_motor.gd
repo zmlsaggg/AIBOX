@@ -19,9 +19,15 @@ var skeleton: Skeleton3D
 var rest_bone_rotations: Dictionary = {}
 var left_thigh_bone: int = -1
 var right_thigh_bone: int = -1
+var left_lower_leg_bone: int = -1
+var right_lower_leg_bone: int = -1
+var left_foot_bone: int = -1
+var right_foot_bone: int = -1
 var left_upper_arm_bone: int = -1
 var right_upper_arm_bone: int = -1
 var spine_bone: int = -1
+var hips_bone: int = -1
+var head_bone: int = -1
 var idle_animation: StringName = &""
 var walk_animation: StringName = &""
 
@@ -63,9 +69,15 @@ func set_skeleton(value: Skeleton3D) -> void:
 	rest_bone_rotations.clear()
 	left_thigh_bone = _find_bone_index(["thigh", "upperleg"], "left")
 	right_thigh_bone = _find_bone_index(["thigh", "upperleg"], "right")
+	left_lower_leg_bone = _find_bone_index(["calf", "lowerleg", "shin"], "left")
+	right_lower_leg_bone = _find_bone_index(["calf", "lowerleg", "shin"], "right")
+	left_foot_bone = _find_bone_index(["foot"], "left")
+	right_foot_bone = _find_bone_index(["foot"], "right")
 	left_upper_arm_bone = _find_bone_index(["upperarm", "arm"], "left")
 	right_upper_arm_bone = _find_bone_index(["upperarm", "arm"], "right")
-	spine_bone = _find_bone_index(["spine", "chest"], "")
+	spine_bone = _find_bone_index(["chest", "spine", "torso"], "")
+	hips_bone = _find_bone_index(["hips", "pelvis"], "")
+	head_bone = _find_bone_index(["head"], "")
 	for index in range(skeleton.get_bone_count()):
 		rest_bone_rotations[index] = skeleton.get_bone_pose_rotation(index)
 
@@ -98,14 +110,22 @@ func _update_rig_animation(delta: float, moving: bool, speed: float) -> void:
 	if moving and speed > 0.12:
 		gait_clock += delta * (5.2 + speed * 1.7)
 		var stride := sin(gait_clock) * minf(0.72, speed / maxf(walk_speed, 0.1))
+		var left_knee := maxf(0.0, -stride) * 0.62
+		var right_knee := maxf(0.0, stride) * 0.62
 		_apply_bone_rotation(left_thigh_bone, stride * 0.68)
 		_apply_bone_rotation(right_thigh_bone, -stride * 0.68)
+		_apply_bone_rotation(left_lower_leg_bone, left_knee)
+		_apply_bone_rotation(right_lower_leg_bone, right_knee)
+		_apply_bone_rotation(left_foot_bone, -left_knee * 0.35)
+		_apply_bone_rotation(right_foot_bone, -right_knee * 0.35)
 		_apply_bone_rotation(left_upper_arm_bone, -stride * 0.42)
 		_apply_bone_rotation(right_upper_arm_bone, stride * 0.42)
 		_apply_bone_rotation(spine_bone, -absf(stride) * 0.045, Vector3.FORWARD)
+		_apply_bone_rotation(hips_bone, absf(stride) * 0.018, Vector3.FORWARD)
 	else:
 		gait_clock += delta
 		_apply_bone_rotation(spine_bone, sin(gait_clock * 1.45) * 0.018, Vector3.FORWARD)
+		_apply_bone_rotation(head_bone, sin(gait_clock * 0.62) * 0.012, Vector3.UP)
 
 func _find_animation(terms: Array[String]) -> StringName:
 	if animation_player == null:
