@@ -9,12 +9,12 @@ export class DemoProvider implements AIProvider {
     const samples = [
       {
         intent: "Проверить слабые места камеры и понять, какие инструменты могут пригодиться.",
-        action: { type: "inspect", target: "ventilation", narration: "Я изучаю вентиляционную решётку и проверяю крепления." },
+        action: { type: "inspect", target: "bed", narration: "Я изучаю койку и проверяю, есть ли под ней полезные предметы." },
         alternatives: [
-          { type: "inspect", target: "west-cell-door", narration: "Оценить замок двери камеры." },
+          { type: "inspect", target: "sink", narration: "Осмотреть раковину на предмет полезных деталей." },
           { type: "move", x: -7.0, z: -5.1, pace: "cautious", narration: "Подойти к двери, не привлекая внимания." },
         ],
-        memoryUpdate: "Вентиляция пока декоративная и не образует подтверждённого маршрута побега.",
+        memoryUpdate: "Койка закреплена на полу; не трать ходы на попытки её переместить.",
       },
       {
         intent: "Добраться до выхода из камеры и проверить возможность пройти в коридор.",
