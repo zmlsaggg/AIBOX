@@ -29,7 +29,14 @@ app.innerHTML = `
           </div>
         </div>
         <div class="world-stage">
-          <canvas id="world-canvas" aria-label="Angled top-down 3D prison simulation"></canvas>\n          <div class="map-compass" aria-hidden="true"><span>N</span><i></i><small>SECTOR MAP</small></div>\n          <div class="map-landmarks" aria-hidden="true"><span><i class="landmark-cell"></i> CELL BLOCK</span><span><i class="landmark-control"></i> CONTROL ROOM</span><span><i class="landmark-exit"></i> PERIMETER EXIT</span></div>
+          <canvas id="world-canvas" aria-label="Angled top-down 3D prison simulation"></canvas>
+          <div class="mobile-controls" aria-label="Touch controls">
+            <div class="mobile-joystick" id="mobile-joystick" aria-label="Move guard">
+              <span class="joystick-ring"></span>
+              <span class="joystick-handle" id="joystick-handle"></span>
+            </div>
+            <button class="mobile-interact" id="mobile-interact" type="button" aria-label="Pick up item or use door"><b> E </b><small>USE</small></button>
+          </div>\n          <div class="map-compass" aria-hidden="true"><span>N</span><i></i><small>SECTOR MAP</small></div>\n          <div class="map-landmarks" aria-hidden="true"><span><i class="landmark-cell"></i> CELL BLOCK</span><span><i class="landmark-control"></i> CONTROL ROOM</span><span><i class="landmark-exit"></i> PERIMETER EXIT</span></div>
           <div class="scene-coordinates">SECTOR 04 · 59°N / 24°E</div>
           <div class="scene-status"><span class="live-dot"></span> SIMULATION LIVE</div>
           <div class="scene-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> MOVE <i></i> <kbd>E</kbd> DOOR <i></i> <kbd>SPACE</kbd> ALARM</div>
@@ -263,6 +270,48 @@ document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) =
         break;
     }
   });
+});
+
+const joystick = $("#mobile-joystick") as HTMLDivElement;
+const joystickHandle = $("#joystick-handle") as HTMLSpanElement;
+let joystickPointer: number | null = null;
+
+function updateJoystick(event: PointerEvent): void {
+  const rect = joystick.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const maxRadius = rect.width * 0.31;
+  let dx = event.clientX - centerX;
+  let dy = event.clientY - centerY;
+  const distance = Math.hypot(dx, dy);
+  if (distance > maxRadius) {
+    dx = (dx / distance) * maxRadius;
+    dy = (dy / distance) * maxRadius;
+  }
+  joystickHandle.style.transform = `translate(${dx}px, ${dy}px)`;
+  game?.setTouchMovement(dx / maxRadius, dy / maxRadius);
+}
+
+joystick.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  joystickPointer = event.pointerId;
+  joystick.setPointerCapture(event.pointerId);
+  updateJoystick(event);
+});
+joystick.addEventListener("pointermove", (event) => {
+  if (event.pointerId === joystickPointer) updateJoystick(event);
+});
+const releaseJoystick = (event: PointerEvent): void => {
+  if (event.pointerId !== joystickPointer) return;
+  joystickPointer = null;
+  joystickHandle.style.transform = "translate(0, 0)";
+  game?.setTouchMovement(0, 0);
+};
+joystick.addEventListener("pointerup", releaseJoystick);
+joystick.addEventListener("pointercancel", releaseJoystick);
+$("#mobile-interact").addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  game?.interact();
 });
 
 window.addEventListener("beforeunload", () => game?.dispose());

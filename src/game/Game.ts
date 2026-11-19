@@ -44,6 +44,8 @@ export class Game {
   private readonly hiredGuards: Character[] = [];
   private readonly turnController: TurnController;
   private readonly keys = new Set<string>();
+  private touchX = 0;
+  private touchZ = 0;
   private readonly callbacks: GameCallbacks;
   private readonly difficulty: PrisonDifficulty;
 
@@ -180,7 +182,7 @@ export class Game {
     if (this.keys.has("a") || this.keys.has("arrowleft")) x -= 1;
     if (this.keys.has("d") || this.keys.has("arrowright")) x += 1;
 
-    this.guard.setPlayerMovement(x, z);
+    this.guard.setPlayerMovement(x + this.touchX, z + this.touchZ);
     this.pickups.applyGravity(delta);
     this.physics.step();
     this.guard.update(delta);
@@ -254,6 +256,17 @@ export class Game {
       this.callbacks.onEvent("Премия за удержание заключённого: +$120.", "success");
     }
     this.emitStats();
+  }
+
+  setTouchMovement(x: number, z: number): void {
+    const length = Math.hypot(x, z);
+    const scale = length > 1 ? 1 / length : 1;
+    this.touchX = x * scale;
+    this.touchZ = z * scale;
+  }
+
+  interact(): void {
+    this.interactAsGuard();
   }
 
   private interactAsGuard(): void {
