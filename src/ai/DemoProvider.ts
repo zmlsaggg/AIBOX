@@ -12,13 +12,13 @@ export class DemoProvider implements AIProvider {
         action: { type: "inspect", target: "bed", narration: "Я изучаю койку и проверяю, есть ли под ней полезные предметы." },
         alternatives: [
           { type: "inspect", target: "sink", narration: "Осмотреть раковину на предмет полезных деталей." },
-          { type: "move", x: -7.0, z: -5.1, pace: "cautious", narration: "Подойти к двери, не привлекая внимания." },
+          { type: "move", x: -8.2, z: -5.1, pace: "cautious", narration: "Подойти к двери, не привлекая внимания." },
         ],
         memoryUpdate: "Койка закреплена на полу; не трать ходы на попытки её переместить.",
       },
       {
         intent: "Добраться до выхода из камеры и проверить возможность пройти в коридор.",
-        action: { type: "move", x: -7.0, z: -5.1, pace: "normal", narration: "Я осторожно приближаюсь к двери камеры." },
+        action: { type: "move", x: -8.2, z: -5.1, pace: "normal", narration: "Я осторожно приближаюсь к двери камеры." },
         alternatives: [
           { type: "inspect", target: "west-cell-door", narration: "Осмотреть дверь перед взаимодействием." },
           { type: "move", x: -8.1, z: -4.8, pace: "cautious", narration: "Сменить угол подхода." },
