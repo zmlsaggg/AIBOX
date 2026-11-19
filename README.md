@@ -163,7 +163,7 @@ The turn controller stores up to 30 completed actions and sends the latest 10, t
 Repeated failed actions are discouraged in the prompt and guarded in code: if the model repeats a recent failed action, the controller selects a distinct valid alternative or falls back to a safe reassessment wait. The next prompt also compares the previous movement target with the actual prisoner position and marks stalled movement as a failure.
 
 Additional AI action capabilities:
-- cautious / normal / fast movement orders;
+- cautious / normal / fast movement orders with A* route planning around known walls, furniture and closed doors;
 - inspect nearby props, doors and loose items to collect confirmed facts;
 - interact with nearby loose items and unlocked doors;
 - use the held keycard on nearby locked checkpoint doors;
