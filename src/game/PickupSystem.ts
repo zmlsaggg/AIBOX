@@ -183,6 +183,36 @@ export class PickupSystem {
     return item.label;
   }
 
+  /** Release the held object with a small forward/upward impulse. */
+  dropHeld(character: Character, throwStrength = 4.2): string | null {
+    const item = this.heldItems.get(character);
+    if (!item) return null;
+
+    const hand = character.getPickupHandPosition();
+    const yaw = character.visual.rotation.y;
+    const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+
+    item.body.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
+    item.collider.setEnabled(true);
+    item.body.setTranslation({ x: hand.x, y: hand.y, z: hand.z }, true);
+    item.body.setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w }, true);
+    item.body.setLinvel({
+      x: forward.x * throwStrength,
+      y: 1.8,
+      z: forward.z * throwStrength,
+    }, true);
+    item.body.setAngvel({
+      x: -forward.z * 2.2,
+      y: 1.4,
+      z: forward.x * 2.2,
+    }, true);
+
+    item.heldBy = null;
+    this.heldItems.delete(character);
+    return item.label;
+  }
+
   dispose(): void {
     for (const item of this.items) {
       this.world.removeRigidBody(item.body);
