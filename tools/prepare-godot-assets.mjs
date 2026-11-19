@@ -5,7 +5,8 @@ import { EXTMeshoptCompression, KHRONOS_EXTENSIONS } from "@gltf-transform/exten
 import { dequantize } from "@gltf-transform/functions";
 import { MeshoptDecoder } from "meshoptimizer";
 
-const assetDirectory = path.resolve(process.argv[2] ?? "godot/assets/characters");
+const sourceDirectory = path.resolve(process.argv[2] ?? ".aibox-source-assets");
+const assetDirectory = path.resolve(process.argv[3] ?? "godot/assets/characters");
 const assets = [
   "guard_dog_walker.glb",
   "prisoner_casual_walker.glb",
@@ -20,7 +21,7 @@ await mkdir(assetDirectory, { recursive: true });
 
 for (const name of assets) {
   const outputPath = path.join(assetDirectory, name);
-  const sourcePath = path.join(assetDirectory, name.replace(/\.glb$/i, ".source.glb"));
+  const sourcePath = path.join(sourceDirectory, name.replace(/\.glb$/i, ".source.glb"));
 
   try {
     await access(sourcePath);
