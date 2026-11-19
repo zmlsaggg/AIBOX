@@ -5,8 +5,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var checks := [
-		{"path": "res://assets/characters/guard_swat.glb", "label": "SWAT guard"},
-		{"path": "res://assets/characters/prisoner_punk.glb", "label": "Punk prisoner"},
+		{"path": "res://assets/characters/guard_dog_walker.glb", "label": "Dog Walker guard"},
+		{"path": "res://assets/characters/prisoner_casual_walker.glb", "label": "Casual Walker prisoner"},
 	]
 	for check in checks:
 		var packed := load(str(check.path)) as PackedScene
@@ -30,9 +30,28 @@ func _run() -> void:
 			bone_names.append(skeleton.get_bone_name(index))
 		var player := _find_animation_player(instance)
 		var clip_names := player.get_animation_list() if player else PackedStringArray()
+		var lowered_clips := PackedStringArray()
+		for clip in clip_names:
+			lowered_clips.append(clip.to_lower())
+		if skeleton.get_bone_count() < 50:
+			push_error("%s model has an incomplete humanoid rig (%s bones)." % [str(check.label), str(skeleton.get_bone_count())])
+			holder.free()
+			quit(1)
+			return
+		for required_clip in ["idle", "walk"]:
+			var found := false
+			for clip in lowered_clips:
+				if clip.contains(required_clip):
+					found = true
+					break
+			if not found:
+				push_error("%s model is missing required %s animation. Found: %s" % [str(check.label), required_clip, ", ".join(clip_names)])
+				holder.free()
+				quit(1)
+				return
 		var bounds := _world_bounds(instance)
 		print("%s: Skeleton3D OK (%s bones): %s" % [str(check.label), str(skeleton.get_bone_count()), ", ".join(bone_names)])
-		print("%s: imported AnimationPlayer clips: %s" % [str(check.label), ", ".join(clip_names) if not clip_names.is_empty() else "none; runtime procedural bone gait is used"])
+		print("%s: imported animations OK: %s" % [str(check.label), ", ".join(clip_names)])
 		print("%s: imported model bounds = %s" % [str(check.label), str(bounds.size)])
 		holder.free()
 	quit(0)
