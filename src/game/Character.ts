@@ -23,8 +23,6 @@ export class Character {
   private readonly head: THREE.Mesh;
   private readonly movementInput = new THREE.Vector2();
   private readonly targetDirection = new THREE.Vector2();
-  private readonly velocity = new THREE.Vector3();
-  private readonly lastVelocity = new THREE.Vector3();
   private pickupAnimation: PickupAnimation | null = null;
   private readonly moveSpeed: number;
   private readonly acceleration: number;
@@ -183,7 +181,6 @@ export class Character {
   update(delta: number, autonomous = false): void {
     const p = this.body.translation();
     const velocity = this.body.linvel();
-    this.lastVelocity.set(velocity.x, 0, velocity.z);
 
     if (autonomous && this.target && !this.pickupAnimation) {
       this.targetLifetime += delta;
