@@ -199,6 +199,7 @@ export class Game {
     this.guard.setPlayerMovement(x + this.touchX, z + this.touchZ);
     this.physicsAccumulator = Math.min(this.physicsAccumulator + delta, PHYSICS_STEP * 5);
     while (this.physicsAccumulator >= PHYSICS_STEP) {
+      this.layout.update(PHYSICS_STEP);
       this.pickups.applyGravity(PHYSICS_STEP);
       this.physics.step();
       this.physicsAccumulator -= PHYSICS_STEP;
