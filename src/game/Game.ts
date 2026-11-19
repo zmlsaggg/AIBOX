@@ -243,14 +243,25 @@ export class Game {
     let outcome: ActionOutcome = { success: true, summary: action.narration };
 
     switch (action.type) {
-      case "move":
-        this.prisoner.moveTo(action.x, action.z, action.pace);
-        outcome = {
-          success: true,
-          summary: `Movement order accepted toward (${action.x.toFixed(1)}, ${action.z.toFixed(1)}) at ${action.pace} pace. Actual position will be checked on the next turn.`,
-        };
-        this.callbacks.onEvent(`ИИ перемещается (${action.pace}): ${action.narration}`);
+      case "move": {
+        const position = this.prisoner.position;
+        const route = this.layout.findPath(position.x, position.z, action.x, action.z);
+        const started = route ? this.prisoner.moveAlong(route, action.pace) : false;
+        outcome = started
+          ? {
+              success: true,
+              summary: `A* found a route with ${route.length} waypoint(s) to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}) at ${action.pace} pace. Actual progress will be checked on the next turn.`,
+            }
+          : {
+              success: false,
+              summary: `No traversable route to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}). A wall, closed/locked door, or blocked target may be in the way.`,
+            };
+        this.callbacks.onEvent(
+          started ? `ИИ строит маршрут (${route.length} точек, ${action.pace}): ${action.narration}` : `ИИ не нашёл путь: ${outcome.summary}`,
+          started ? "normal" : "warning",
+        );
         break;
+      }
 
       case "inspect": {
         const inspected = this.inspectTarget(action.target);
