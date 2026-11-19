@@ -49,9 +49,8 @@ func _ready() -> void:
 	_build_ui()
 	guard.call("set_active", false)
 	prisoner.call("set_active", false)
-	route_planner = Node.new()
+	route_planner = RoutePlannerScript.new()
 	route_planner.name = "RoutePlanner"
-	route_planner.set_script(RoutePlannerScript)
 	add_child(route_planner)
 	await get_tree().physics_frame
 	_rebuild_navigation()
