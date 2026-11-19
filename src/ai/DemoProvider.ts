@@ -1,32 +1,69 @@
 import type { AIProvider } from "./contracts";
 
-/**
- * Local development provider. It simulates browser-model responses so the
- * game loop can be tested before a user connects a real web session.
- */
+/** Local deterministic provider used to exercise the same decision/memory contract as browser models. */
 export class DemoProvider implements AIProvider {
   readonly name = "LOCAL DEMO";
 
   async generate(prompt: string, signal: AbortSignal): Promise<string> {
     const turn = Number(/TURN:\s*(\d+)/.exec(prompt)?.[1] ?? 1);
     const samples = [
-      { type: "inspect", target: "ventilation", narration: "Я осматриваю вентиляционную решётку и проверяю, насколько надёжно она закреплена." },
-      { type: "move", x: -7.0, z: -5.05, narration: "Я осторожно приближаюсь к двери камеры." },
-      { type: "interact", target: "west-cell-door", narration: "Пробую открыть дверь камеры." },
-      { type: "move", x: -4.2, z: -5.1, narration: "Я прохожу в коридор и осматриваюсь." },
-      { type: "inspect", target: "checkpoint", narration: "Я изучаю следующий контур защиты." },
+      {
+        intent: "Проверить слабые места камеры и понять, какие инструменты могут пригодиться.",
+        action: { type: "inspect", target: "ventilation", narration: "Я изучаю вентиляционную решётку и проверяю крепления." },
+        alternatives: [
+          { type: "inspect", target: "west-cell-door", narration: "Оценить замок двери камеры." },
+          { type: "move", x: -7.0, z: -5.1, pace: "cautious", narration: "Подойти к двери, не привлекая внимания." },
+        ],
+        memoryUpdate: "Вентиляция пока декоративная и не образует подтверждённого маршрута побега.",
+      },
+      {
+        intent: "Добраться до выхода из камеры и проверить возможность пройти в коридор.",
+        action: { type: "move", x: -7.0, z: -5.1, pace: "normal", narration: "Я осторожно приближаюсь к двери камеры." },
+        alternatives: [
+          { type: "inspect", target: "west-cell-door", narration: "Осмотреть дверь перед взаимодействием." },
+          { type: "move", x: -8.1, z: -4.8, pace: "cautious", narration: "Сменить угол подхода." },
+        ],
+        memoryUpdate: "Дверь камеры находится западнее стартовой позиции; для взаимодействия нужно подойти близко.",
+      },
+      {
+        intent: "Открыть дверь камеры и перейти к следующему участку маршрута.",
+        action: { type: "interact", target: "west-cell-door", narration: "Пробую открыть дверь камеры." },
+        alternatives: [
+          { type: "inspect", target: "west-cell-door", narration: "Проверить состояние двери и замка." },
+          { type: "move", x: -6.4, z: -5.1, pace: "cautious", narration: "Подойти к створке с другой стороны." },
+        ],
+        memoryUpdate: "Не повторяй взаимодействие с дверью, если она недоступна или закрыта на замок.",
+      },
+      {
+        intent: "Продвинуться через коридор к контрольной зоне.",
+        action: { type: "move", x: -4.2, z: -5.1, pace: "fast", narration: "Я прохожу в коридор и осматриваюсь." },
+        alternatives: [
+          { type: "inspect", target: "cell-door", narration: "Проверить следующую дверь." },
+          { type: "inspect", target: "keycard", narration: "Проверить, где находится ключ-карта." },
+        ],
+        memoryUpdate: "Ключ-карта может открыть контрольно-пропускные двери; сначала нужно найти её и поднять.",
+      },
+      {
+        intent: "Проверить положение ключ-карты и спланировать её получение.",
+        action: { type: "inspect", target: "keycard", narration: "Я ищу ключ-карту в контрольной зоне." },
+        alternatives: [
+          { type: "move", x: -3.2, z: 6.15, pace: "cautious", narration: "Подойти к ключ-карте." },
+          { type: "inspect", target: "control-door", narration: "Проверить дверь в контрольную зону." },
+        ],
+        memoryUpdate: "Осмотр предмета срабатывает только на близкой дистанции; после подтверждения местоположения нужно подойти и подобрать его.",
+      },
     ];
-    const action = samples[(turn - 1) % samples.length];
+    const decision = samples[(turn - 1) % samples.length];
 
     await new Promise<void>((resolve, reject) => {
-      const timer = window.setTimeout(resolve, 1350);
+      const timer = window.setTimeout(resolve, 850);
       signal.addEventListener("abort", () => {
         window.clearTimeout(timer);
         reject(new DOMException("Prompt interrupted", "AbortError"));
       }, { once: true });
     });
-
     if (signal.aborted) throw new DOMException("Prompt interrupted", "AbortError");
-    return JSON.stringify(action);
+
+    return JSON.stringify({ ...decision, confidence: 0.78 });
   }
 }
