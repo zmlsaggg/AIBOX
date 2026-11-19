@@ -257,7 +257,7 @@ export class Game {
               summary: `No traversable route to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}). A wall, closed/locked door, or blocked target may be in the way.`,
             };
         this.callbacks.onEvent(
-          started ? `ИИ строит маршрут (${route.length} точек, ${action.pace}): ${action.narration}` : `ИИ не нашёл путь: ${outcome.summary}`,
+          started ? `ИИ строит маршрут (${route?.length ?? 0} точек, ${action.pace}): ${action.narration}` : `ИИ не нашёл путь: ${outcome.summary}`,
           started ? "normal" : "warning",
         );
         break;
