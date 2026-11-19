@@ -29,7 +29,7 @@ export interface TurnMemoryEntry {
 export interface PrisonSnapshot {
   turn: number;
   difficulty: PrisonDifficulty;
-  prisoner: { x: number; z: number; status: string; heldItem: string | null };
+  prisoner: { x: number; z: number; status: string; heldItem: string | null; moving: boolean };
   guard: { x: number; z: number };
   visibleObjects: string[];
   doorStates: PrisonDoorState[];
