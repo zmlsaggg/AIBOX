@@ -471,7 +471,7 @@ export class PrisonLayout {
 
     let finalDestination = requestedTarget;
     if (isBlockedAt(requestedTarget.x, requestedTarget.z) || isBlocked(goal.column, goal.row)) {
-      const candidates: Array<{ column: number; row: number; distance: number }> = [];
+      const candidates: Array<{ column: number; row: number; distance: number; startDistance: number }> = [];
       for (let radius = 1; radius <= 4; radius += 1) {
         for (let dx = -radius; dx <= radius; dx += 1) {
           for (let dz = -radius; dz <= radius; dz += 1) {
@@ -481,12 +481,12 @@ export class PrisonLayout {
             if (column < 0 || column > maxColumn || row < 0 || row > maxRow || isBlocked(column, row)) continue;
             const point = toWorld(column, row);
             const distance = Math.hypot(point.x - requestedTarget.x, point.z - requestedTarget.z);
-            if (distance <= 1.6) candidates.push({ column, row, distance });
+            if (distance <= 1.6) candidates.push({ column, row, distance, startDistance: Math.hypot(point.x - startX, point.z - startZ) });
           }
         }
         if (candidates.length) break;
       }
-      candidates.sort((a, b) => a.distance - b.distance);
+      candidates.sort((a, b) => a.distance - b.distance || a.startDistance - b.startDistance);
       const nearest = candidates[0];
       if (!nearest) return null;
       goal = { column: nearest.column, row: nearest.row };
