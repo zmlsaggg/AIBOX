@@ -84,8 +84,9 @@ app.innerHTML = `
                   <option value="claude">Claude</option>
                 </select>
               </label>
-              <button class="connect-browser-button" id="connect-browser">ПОДКЛЮЧИТЬ ИИ</button>
-              <small id="browser-connection-status">Нажми «Подключить ИИ». Вход откроется в отдельном окне AIBOX. Повторно входить не придётся.</small>
+              <button class="chrome-install-button" id="install-chrome-connector">УСТАНОВИТЬ CHROME CONNECTOR</button>
+              <button class="connect-browser-button" id="connect-browser">ОТКРЫТЬ ИИ В CHROME</button>
+              <small id="browser-connection-status">Один раз подключи расширение в chrome://extensions. После этого AIBOX будет работать с твоими обычными авторизованными вкладками Chrome — без второго профиля и повторного входа.</small>
             </div>
             <div class="ai-actions">
               <button class="primary-button" data-action="next-turn">RUN AI TURN <span>↗</span></button>
@@ -280,12 +281,32 @@ function setTurnState(state: string, detail?: string): void {
   $("#facility-status").textContent = running ? "AI THINKING" : "ACTIVE";
 }
 
+$("#install-chrome-connector").addEventListener("click", async () => {
+  const button = $("#install-chrome-connector");
+  const status = $("#browser-connection-status");
+  button.setAttribute("disabled", "true");
+  status.textContent = "Готовлю Chrome Connector…";
+  try {
+    if (!window.aiboxAI?.installChromeConnector) {
+      throw new Error("Установка Chrome Connector доступна в установленной Windows-версии AIBOX.");
+    }
+    const result = await window.aiboxAI.installChromeConnector();
+    status.textContent = result.message;
+    addEvent("Chrome Connector скопирован. Остался один ручной шаг в chrome://extensions.", "success");
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Не удалось установить Chrome Connector.";
+    addEvent(status.textContent, "warning");
+  } finally {
+    button.removeAttribute("disabled");
+  }
+});
+
 $("#connect-browser").addEventListener("click", async () => {
   const button = $("#connect-browser");
   const status = $("#browser-connection-status");
   const selected = $("#browser-provider") as HTMLSelectElement;
   button.setAttribute("disabled", "true");
-  status.textContent = "Открываю окно выбранного ИИ-сервиса…";
+  status.textContent = "Открываю выбранный сервис в обычном Chrome…";
   try {
     browserProvider.configure(selected.value as BrowserProviderId);
     const detail = await browserProvider.connect();
@@ -296,7 +317,7 @@ $("#connect-browser").addEventListener("click", async () => {
     status.textContent = detail;
     $("#provider-name").textContent = browserProvider.selectedProvider.toUpperCase();
     $(".demo-label").textContent = browserProvider.selectedProvider.toUpperCase();
-    addEvent(`Открыта сессия ${browserProvider.selectedProvider}. Войди в аккаунт в окне AIBOX.`, "success");
+    addEvent(`Открыта вкладка ${browserProvider.selectedProvider} в обычном браузере. Используется текущая сессия Chrome.`, "success");
   } catch (error) {
     browserConnected = false;
     status.textContent = error instanceof Error ? error.message : "Не удалось открыть окно ИИ.";
