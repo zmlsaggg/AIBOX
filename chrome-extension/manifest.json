@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "AIBOX Chrome Session Connector",
+  "description": "Lets AIBOX use your existing, signed-in Chrome tabs for AI provider sessions.",
+  "version": "1.0.0",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt6PaKGnRVOARuCg0v7MjGzj4L34MNttnIoAxmmNnoCN2iWz/C1dnA0VW/qVg/4vhSyLEWauqEh8mOBbh/l7JEAqfLn4fudI4DDeO/UJDXpfd77AuQQcuML513/W5tlz7KAytkqeqgxMn+lW7rUbVizAK/pXG0b2l4edYuHzwhu51/yyJqGlZ/0hEMGt0TOpG8r4mlujDTGM4wGC3gbmemKzau66x9uX1UwnuuYnK3C4DOojucVZs3WSGKHF/HU8vl57k9EwU1bt1gNDXF6jnE8WuDYLIvUU82PzWGmStlrB3es6Lq8fFg3azqgRWt5IHkrQ4SV2GzUofODxzD60HmwIDAQAB",
+  "permissions": [
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.deepseek.com/*",
+    "https://chat.qwen.ai/*",
+    "https://gemini.google.com/*",
+    "https://claude.ai/*",
+    "http://127.0.0.1:3210/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.deepseek.com/*",
+        "https://chat.qwen.ai/*",
+        "https://gemini.google.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "AIBOX Chrome Session Connector"
+  }
+}
