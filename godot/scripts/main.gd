@@ -148,6 +148,14 @@ func _create_world_environment() -> void:
 	environment.ssao_horizon = 0.06
 	environment.ssao_sharpness = 0.95
 	environment.ssao_light_affect = 0.12
+	# Real-time bounce lighting for the enclosed desktop prison layout.
+	# Mobile uses the dedicated renderer and falls back to direct lights + SSIL.
+	environment.sdfgi_enabled = not OS.has_feature("mobile")
+	environment.sdfgi_cascades = 2
+	environment.sdfgi_use_occlusion = true
+	environment.sdfgi_read_sky_light = false
+	environment.sdfgi_energy = 0.82
+	environment.sdfgi_bounce_feedback = 0.42
 	environment.ssil_enabled = true
 	environment.ssil_radius = 4.5
 	environment.ssil_intensity = 0.55
@@ -311,6 +319,7 @@ func _add_door(label: String, position: Vector3, size: Vector3, open_angle: floa
 	door.set("open_angle_degrees", open_angle)
 	door.position = position
 	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	mesh_instance.mesh = mesh
@@ -384,6 +393,7 @@ func _create_actor(label: String, position: Vector3, material: StandardMaterial3
 			# Ara exports humanoids +Y-up and facing +Z; the tactical controller faces -Z.
 			model.rotation.y = PI
 			visual.add_child(model)
+			_set_dynamic_gi_mode(model)
 			var imported_skeleton := _find_skeleton(model)
 			if imported_skeleton:
 				actor.call("set_skeleton", imported_skeleton)
@@ -410,6 +420,12 @@ func _create_actor(label: String, position: Vector3, material: StandardMaterial3
 	actor.add_to_group("navigation_actors")
 	add_child(actor)
 	return actor
+
+func _set_dynamic_gi_mode(node: Node) -> void:
+	if node is GeometryInstance3D:
+		node.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	for child in node.get_children():
+		_set_dynamic_gi_mode(child)
 
 func _find_skeleton(node: Node) -> Skeleton3D:
 	if node is Skeleton3D:
@@ -503,6 +519,7 @@ func _create_item(item_id: StringName, label: String, position: Vector3, color: 
 	item.position = position
 	var material := _material(color, 0.42, 0.3)
 	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	if item_id == &"wrench":
 		var mesh := BoxMesh.new()
 		mesh.size = size
