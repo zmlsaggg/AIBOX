@@ -640,3 +640,57 @@ button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
   .topbar { -webkit-app-region: drag; }
   .topbar a, .topbar button, .topbar input, .topbar select { -webkit-app-region: no-drag; }
 }
+
+
+/* Final readability and motion pass for the desktop control room. */
+@media (min-width: 781px) {
+  .main-layout { grid-template-columns: minmax(0, 1fr) minmax(430px, 460px); gap: 18px; }
+  .panel-section, .event-section { padding: 19px 21px; }
+  .section-heading { margin-bottom: 17px; }
+  .money-line strong { font-size: 27px; }
+  .mini-stat { padding: 12px 13px; }
+  .mini-stat span { font-size: 10px; }
+  .mini-stat b { font-size: 20px; }
+  .system-copy b { font-size: 13px; }
+  .system-copy small { font-size: 11px; }
+  .ai-status-card p { font-size: 12px; line-height: 1.65; }
+  .browser-session-controls label { font-size: 10px; }
+  .browser-session-controls select { min-height: 44px; font-size: 13px; }
+  .connect-browser-button { min-height: 46px; font-size: 11px; }
+  #browser-connection-status { font-size: 11px; line-height: 1.6; }
+  .cognition-block p { font-size: 12px; }
+  .cognition-block ol { font-size: 11px; }
+  .event-row p { font-size: 11px; line-height: 1.55; }
+}
+.system-row, .primary-button, .interrupt-button, .alarm-button, .connect-browser-button,
+.view-button, .difficulty-card, .start-button, .intro-enter {
+  transition:
+    background-color .22s ease,
+    border-color .22s ease,
+    color .22s ease,
+    box-shadow .24s ease,
+    transform .24s cubic-bezier(.2,.7,.2,1),
+    opacity .22s ease;
+}
+.system-row:hover, .primary-button:hover, .alarm-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(118, 212, 189, .4);
+  box-shadow: 0 7px 20px rgba(0, 0, 0, .18);
+}
+.connect-browser-button:hover, .interrupt-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(118, 212, 189, .1);
+}
+.ai-pulse { animation: ai-pulse-breathe 2.8s ease-in-out infinite; }
+@keyframes ai-pulse-breathe {
+  0%, 100% { opacity: .72; box-shadow: 0 0 7px rgba(227, 180, 119, .35); }
+  50% { opacity: 1; box-shadow: 0 0 17px rgba(227, 180, 119, .82); }
+}
+.shift-state i, .live-dot { animation: status-breathe 3.4s ease-in-out infinite; }
+@keyframes status-breathe {
+  0%, 100% { opacity: .68; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
