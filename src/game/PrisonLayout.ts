@@ -458,7 +458,7 @@ export class PrisonLayout {
       if (x < -11.55 || x > 13.55 || z < -8.55 || z > 8.55) return true;
       if (obstacles.some((rect) => Math.abs(x - rect.x) < rect.hw + 0.22 && Math.abs(z - rect.z) < rect.hd + 0.22)) return true;
       for (const door of this.doors.values()) {
-        if (door.open) continue;
+        if (door.open && Math.abs(door.angle) > 0.9) continue;
         if (Math.abs(x - door.position.x) < door.width / 2 + 0.22
           && Math.abs(z - door.position.z) < door.depth / 2 + 0.22) return true;
       }
