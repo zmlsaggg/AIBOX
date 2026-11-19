@@ -5,8 +5,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var checks := [
-		{"path": "res://assets/characters/guard_dog_walker.glb", "label": "Dog Walker guard"},
-		{"path": "res://assets/characters/prisoner_casual_walker.glb", "label": "Casual Walker prisoner"},
+		{"path": "res://assets/characters/guard.glb", "label": "Ara high-detail warden"},
+		{"path": "res://assets/characters/prisoner.glb", "label": "Ara high-detail prisoner"},
 	]
 	for check in checks:
 		var packed := load(str(check.path)) as PackedScene
@@ -20,41 +20,82 @@ func _run() -> void:
 		holder.add_child(instance)
 		await process_frame
 		var skeleton := _find_skeleton(instance)
-		if skeleton == null:
-			push_error("%s model has no Skeleton3D rig." % str(check.label))
+		if skeleton == null or skeleton.get_bone_count() < 60:
+			push_error("%s model has no full Mixamo-compatible game rig (%s bones)." % [
+				str(check.label),
+				str(skeleton.get_bone_count()) if skeleton else "0"
+			])
 			holder.free()
 			quit(1)
 			return
-		var bone_names: Array[String] = []
-		for index in range(skeleton.get_bone_count()):
-			bone_names.append(skeleton.get_bone_name(index))
-		var player := _find_animation_player(instance)
-		var clip_names := player.get_animation_list() if player else PackedStringArray()
+		var animation_player := _find_animation_player(instance)
+		if animation_player == null:
+			push_error("%s model has no AnimationPlayer." % str(check.label))
+			holder.free()
+			quit(1)
+			return
+		var clip_names := animation_player.get_animation_list()
 		var lowered_clips := PackedStringArray()
 		for clip in clip_names:
 			lowered_clips.append(clip.to_lower())
-		if skeleton.get_bone_count() < 50:
-			push_error("%s model has an incomplete humanoid rig (%s bones)." % [str(check.label), str(skeleton.get_bone_count())])
-			holder.free()
-			quit(1)
-			return
-		for required_clip in ["idle", "walk"]:
+		for required_clip in ["idle", "walk", "run"]:
 			var found := false
 			for clip in lowered_clips:
 				if clip.contains(required_clip):
 					found = true
 					break
 			if not found:
-				push_error("%s model is missing required %s animation. Found: %s" % [str(check.label), required_clip, ", ".join(clip_names)])
+				push_error("%s model is missing required %s animation. Found: %s" % [
+					str(check.label), required_clip, ", ".join(clip_names)
+				])
 				holder.free()
 				quit(1)
 				return
+		var mesh_stats := _mesh_stats(instance)
+		if mesh_stats.triangles < 50000:
+			push_error("%s model is not high-detail: %s triangles." % [str(check.label), str(mesh_stats.triangles)])
+			holder.free()
+			quit(1)
+			return
+		if mesh_stats.textured_surfaces < 1:
+			push_error("%s model has no imported PBR/albedo texture surfaces." % str(check.label))
+			holder.free()
+			quit(1)
+			return
 		var bounds := _world_bounds(instance)
-		print("%s: Skeleton3D OK (%s bones): %s" % [str(check.label), str(skeleton.get_bone_count()), ", ".join(bone_names)])
-		print("%s: imported animations OK: %s" % [str(check.label), ", ".join(clip_names)])
+		if bounds.size.y < 1.45 or bounds.size.y > 2.2:
+			push_error("%s model height is out of the expected human scale: %s" % [str(check.label), str(bounds.size.y)])
+			holder.free()
+			quit(1)
+			return
+		print("%s: %s bones · %s triangles · %s textured surfaces." % [
+			str(check.label),
+			str(skeleton.get_bone_count()),
+			str(mesh_stats.triangles),
+			str(mesh_stats.textured_surfaces)
+		])
+		print("%s: imported animation clips: %s" % [str(check.label), ", ".join(clip_names)])
 		print("%s: imported model bounds = %s" % [str(check.label), str(bounds.size)])
 		holder.free()
 	quit(0)
+
+func _mesh_stats(node: Node) -> Dictionary:
+	var result := {"triangles": 0, "textured_surfaces": 0}
+	var mesh_nodes: Array[MeshInstance3D] = []
+	_collect_mesh_nodes(node, mesh_nodes)
+	for mesh_node in mesh_nodes:
+		var mesh := mesh_node.mesh
+		if mesh == null:
+			continue
+		for surface in range(mesh.get_surface_count()):
+			var arrays := mesh.surface_get_arrays(surface)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+			result.triangles += int(indices.size() / 3) if not indices.is_empty() else int(vertices.size() / 3)
+			var material := mesh.surface_get_material(surface)
+			if material is BaseMaterial3D and (material as BaseMaterial3D).albedo_texture != null:
+				result.textured_surfaces += 1
+	return result
 
 func _world_bounds(node: Node) -> AABB:
 	var result := AABB()
@@ -62,7 +103,10 @@ func _world_bounds(node: Node) -> AABB:
 	var mesh_nodes: Array[MeshInstance3D] = []
 	_collect_mesh_nodes(node, mesh_nodes)
 	for mesh_node in mesh_nodes:
-		var aabb := mesh_node.get_aabb()
+		var mesh := mesh_node.mesh
+		if mesh == null:
+			continue
+		var aabb := mesh.get_aabb()
 		var transform := mesh_node.global_transform
 		for x in [aabb.position.x, aabb.end.x]:
 			for y in [aabb.position.y, aabb.end.y]:
