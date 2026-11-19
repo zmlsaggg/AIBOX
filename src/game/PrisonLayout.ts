@@ -587,6 +587,15 @@ export class PrisonLayout {
     return true;
   }
 
+  forceOpenDoorNear(id: string, x: number, z: number, maxDistance = 2.4): boolean {
+    const door = this.doors.get(id);
+    if (!door || !door.locked || Math.hypot(door.position.x - x, door.position.z - z) > maxDistance) return false;
+    door.locked = false;
+    door.open = true;
+    door.targetAngle = ["outer-exit", "west-cell-door", "control-door"].includes(id) ? -1.28 : 1.28;
+    return true;
+  }
+
   getDoorStates(): Array<{ id: string; open: boolean; locked: boolean; x: number; z: number }> {
     return Array.from(this.doors.values()).map((door) => ({
       id: door.id,
