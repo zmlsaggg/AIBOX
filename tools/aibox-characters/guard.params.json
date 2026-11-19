@@ -1,0 +1,73 @@
+{
+  "name": "AIBOX Warden",
+  "seed": 91001,
+  "gender": 1,
+  "age": 0.58,
+  "muscle": 0.72,
+  "weight": 0.56,
+  "height": 0.56,
+  "proportions": 0.82,
+  "african": 0.82,
+  "asian": 0.05,
+  "caucasian": 0.13,
+  "breastSize": 0.5,
+  "breastFirmness": 0.5,
+  "modifiers": {
+    "head/head-square": 0.12,
+    "chin/chin-width": 0.08,
+    "torso/torso-vshape": 0.12
+  },
+  "skin": "auto",
+  "skinTint": "#ffffff",
+  "eyes": "brownlight",
+  "eyebrows": "eyebrow003",
+  "eyelashes": "eyelashes01",
+  "hair": "buzz",
+  "hairTint": "#ffffff",
+  "hairColor": "#171513",
+  "facialHair": "stubble",
+  "beardColor": "#201a15",
+  "tattoos": [],
+  "tattooInk": "#1c2128",
+  "earrings": "none",
+  "earringMetal": "silver",
+  "outfit": "none",
+  "top": "uniform_shirt",
+  "bottom": "uniform_trousers",
+  "underwear": true,
+  "accessories": [
+    "utility_belt",
+    "beret"
+  ],
+  "garmentStyles": {
+    "uniform_shirt": {
+      "pattern": "solid",
+      "color": "#263442",
+      "color2": "#17222d"
+    },
+    "uniform_trousers": {
+      "pattern": "solid",
+      "color": "#202a36",
+      "color2": "#161d26"
+    },
+    "utility_belt": {
+      "pattern": "leather",
+      "color": "#131313",
+      "color2": "#292929"
+    },
+    "beret": {
+      "pattern": "solid",
+      "color": "#1a2028",
+      "color2": "#b79a58"
+    }
+  },
+  "shoes": "combat_boots",
+  "hat": "none",
+  "outfitTint": "#ffffff",
+  "detail": "high",
+  "rig": "game",
+  "faceBones": true,
+  "restPose": "T",
+  "animations": true,
+  "weapon": "none"
+}
