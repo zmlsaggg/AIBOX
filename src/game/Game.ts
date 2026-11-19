@@ -3,6 +3,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { Character } from "./Character";
 import { PrisonLayout } from "./PrisonLayout";
 import { EnvironmentDetails } from "./EnvironmentDetails";
+import { CinematicAtmosphere } from "./CinematicAtmosphere";
 import { PickupSystem } from "./PickupSystem";
 import { DemoProvider } from "../ai/DemoProvider";
 import type { AIProvider } from "../ai/contracts";
@@ -81,13 +82,14 @@ export class Game {
     this.scene.fog = new THREE.Fog(0x101719, 34, 68);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.shadowMap.autoUpdate = true;
+    this.renderer.info.autoReset = true;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.16;
+    this.renderer.toneMappingExposure = 1.08;
     this.renderer.setClearColor(0x101719, 1);
 
     this.camera = new THREE.OrthographicCamera(-15, 15, 11.25, -11.25, 0.1, 100);
@@ -99,7 +101,7 @@ export class Game {
     const keyLight = new THREE.DirectionalLight(0xf2dfc0, 2.15);
     keyLight.position.set(-9, 19, 11);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(3072, 3072);
+    keyLight.shadow.mapSize.set(4096, 4096);
     keyLight.shadow.bias = -0.00018;
     keyLight.shadow.normalBias = 0.025;
     keyLight.shadow.camera.left = -16;
@@ -111,6 +113,7 @@ export class Game {
     this.physics = new RAPIER.World({ x: 0, y: 0, z: 0 });
     this.layout = new PrisonLayout(this.scene, this.physics, difficulty);
     new EnvironmentDetails(this.scene);
+    new CinematicAtmosphere(this.scene);
     this.pickups = new PickupSystem(this.physics, this.scene);
     this.guard = new Character(this.physics, this.scene, "guard", -5.7, 6.8, "PLAYER GUARD");
     this.prisoner = new Character(this.physics, this.scene, "prisoner", -9.2, -3.6, "AI PRISONER");
