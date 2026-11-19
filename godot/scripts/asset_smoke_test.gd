@@ -15,10 +15,14 @@ func _run() -> void:
 			quit(1)
 			return
 		var instance := packed.instantiate()
+		var holder := Node3D.new()
+		root.add_child(holder)
+		holder.add_child(instance)
+		await process_frame
 		var skeleton := _find_skeleton(instance)
 		if skeleton == null:
 			push_error("%s model has no Skeleton3D rig." % str(check.label))
-			instance.free()
+			holder.free()
 			quit(1)
 			return
 		var bone_names: Array[String] = []
@@ -26,10 +30,37 @@ func _run() -> void:
 			bone_names.append(skeleton.get_bone_name(index))
 		var player := _find_animation_player(instance)
 		var clip_names := player.get_animation_list() if player else PackedStringArray()
+		var bounds := _world_bounds(instance)
 		print("%s: Skeleton3D OK (%s bones): %s" % [str(check.label), str(skeleton.get_bone_count()), ", ".join(bone_names)])
 		print("%s: imported AnimationPlayer clips: %s" % [str(check.label), ", ".join(clip_names) if not clip_names.is_empty() else "none; runtime procedural bone gait is used"])
-		instance.free()
+		print("%s: imported model bounds = %s" % [str(check.label), str(bounds.size)])
+		holder.free()
 	quit(0)
+
+func _world_bounds(node: Node) -> AABB:
+	var result := AABB()
+	var has_point := false
+	var mesh_nodes: Array[MeshInstance3D] = []
+	_collect_mesh_nodes(node, mesh_nodes)
+	for mesh_node in mesh_nodes:
+		var aabb := mesh_node.get_aabb()
+		var transform := mesh_node.global_transform
+		for x in [aabb.position.x, aabb.end.x]:
+			for y in [aabb.position.y, aabb.end.y]:
+				for z in [aabb.position.z, aabb.end.z]:
+					var point := transform * Vector3(x, y, z)
+					if not has_point:
+						result = AABB(point, Vector3.ZERO)
+						has_point = true
+					else:
+						result = result.expand(point)
+	return result
+
+func _collect_mesh_nodes(node: Node, result: Array[MeshInstance3D]) -> void:
+	if node is MeshInstance3D:
+		result.append(node as MeshInstance3D)
+	for child in node.get_children():
+		_collect_mesh_nodes(child, result)
 
 func _find_skeleton(node: Node) -> Skeleton3D:
 	if node is Skeleton3D:
