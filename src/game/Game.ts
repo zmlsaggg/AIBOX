@@ -169,11 +169,15 @@ export class Game {
     const target = event.target;
     if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
     const key = event.key.toLowerCase();
-    if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "e", " "].includes(key)) {
+    if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "e", "q", " "].includes(key)) {
       event.preventDefault();
     }
     this.keys.add(key);
     if (key === "e" && !event.repeat) this.interactAsGuard();
+    if (key === "q" && !event.repeat) {
+      const dropped = this.pickups.dropHeld(this.guard);
+      if (dropped) this.callbacks.onEvent(`Охранник бросает ${dropped}.`, "success");
+    }
     if (key === " " && !event.repeat) this.triggerAlarm();
   };
 
