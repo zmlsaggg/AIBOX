@@ -45,6 +45,7 @@ async function ensureBrowser() {
   page = context.pages()[0] || await context.newPage();
 }
 async function selectProvider(id) {
+  if (busy) throw new Error("Cannot switch AI providers while a prompt is running.");
   const provider = PROVIDERS[id];
   if (!provider) throw new Error("Unknown provider");
   await ensureBrowser();
