@@ -469,6 +469,10 @@ export class Game {
   }
 
   async takeAITurn(): Promise<void> {
+    if (this.prisoner.isPickingUp) {
+      this.callbacks.onEvent("Дождись завершения анимации подбора предмета перед следующим ходом ИИ.", "warning");
+      return;
+    }
     if (this.hasEscaped) {
       this.callbacks.onEvent("Смена завершена: заключённый уже покинул периметр.", "warning");
       return;
@@ -480,7 +484,7 @@ export class Game {
       prisoner: {
         x: position.x,
         z: position.z,
-        status: "в камере",
+        status: this.prisoner.isPickingUp ? "подбирает предмет" : this.prisoner.isMovingToTarget ? "движется по маршруту" : "готов к действию",
         heldItem: this.pickups.getHeldItemId(this.prisoner),
         moving: this.prisoner.isMovingToTarget,
       },
