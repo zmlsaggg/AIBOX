@@ -6,6 +6,7 @@ declare global {
       connect(provider: "chatgpt" | "deepseek" | "qwen" | "gemini" | "claude"): Promise<{
         provider: string;
         title: string;
+        connected: boolean;
         message: string;
       }>;
       generate(prompt: string): Promise<string>;
