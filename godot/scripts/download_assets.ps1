@@ -2,7 +2,10 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $root "assets/characters"
+$repositoryRoot = Split-Path -Parent $root
+$sourceTarget = Join-Path $repositoryRoot ".aibox-source-assets"
 New-Item -ItemType Directory -Force -Path $target | Out-Null
+New-Item -ItemType Directory -Force -Path $sourceTarget | Out-Null
 
 $assets = @(
     @{
@@ -22,7 +25,7 @@ $assets = @(
 )
 
 foreach ($asset in $assets) {
-    $destination = Join-Path $target $asset.DownloadName
+    $destination = Join-Path $sourceTarget $asset.DownloadName
     $temporary = "$destination.download"
     if ((Test-Path $destination) -and (Get-Item $destination).Length -eq $asset.Bytes) {
         $existingHash = (Get-FileHash -Algorithm SHA256 $destination).Hash.ToLowerInvariant()
@@ -53,10 +56,9 @@ foreach ($asset in $assets) {
 Write-Host "AIBOX CC0 humanoid characters are ready." -ForegroundColor Green
 
 
-$repositoryRoot = Split-Path -Parent $root
 $converter = Join-Path $repositoryRoot "tools/prepare-godot-assets.mjs"
 Write-Host "Converting compressed source GLBs into Godot-compatible GLB files..." -ForegroundColor Cyan
-& node $converter $target
+& node $converter $sourceTarget $target
 if ($LASTEXITCODE -ne 0) {
     throw "Character model conversion failed."
 }
