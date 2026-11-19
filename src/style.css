@@ -634,3 +634,9 @@ button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
   .intro-description { font-size: 12px; }
   .intro-corner { font-size: 7px; }
 }
+
+/* Allow dragging the frameless desktop window when fullscreen is toggled off. */
+@media (min-width: 781px) {
+  .topbar { -webkit-app-region: drag; }
+  .topbar a, .topbar button, .topbar input, .topbar select { -webkit-app-region: no-drag; }
+}
