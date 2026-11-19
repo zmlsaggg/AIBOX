@@ -49,6 +49,8 @@ jobs:
         run: test -s godot/assets/characters/guard_swat.glb && test -s godot/assets/characters/prisoner_punk.glb
       - name: Import and parse native project
         run: godot --headless --path godot --editor --quit
+      - name: Verify rigged character assets
+        run: godot --headless --path godot --script res://scripts/asset_smoke_test.gd
       - name: Run native project smoke test
         run: godot --headless --path godot --quit-after 5 --log-file godot-smoke.log
       - name: Fail on script or runtime errors
