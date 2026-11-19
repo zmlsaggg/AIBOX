@@ -1,0 +1,31 @@
+; AIBOX native game project
+; Target engine: Godot 4.7.2 Stable (standard build, GDScript).
+config_version=5
+
+[application]
+config/name="AIBOX"
+config/description="A cinematic prison escape simulation."
+run/main_scene="res://scenes/main.tscn"
+
+[display]
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/size/mode=3
+window/size/borderless=true
+window/stretch/mode="canvas_items"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.035, 0.055, 0.06, 1)
+
+[physics]
+3d/default_gravity=18.0
+3d/default_gravity_vector=Vector3(0, -1, 0)
+3d/physics_engine="GodotPhysics3D"
+
+[application/run]
+max_fps=120
