@@ -5,13 +5,10 @@ import * as THREE from "three";
  * All meshes are visual-only; collision geometry remains owned by PrisonLayout/Rapier.
  */
 export class CinematicAtmosphere {
-  private readonly stainMaterial: THREE.MeshBasicMaterial;
-  private readonly scuffMaterial: THREE.MeshBasicMaterial;
-
   constructor(private readonly scene: THREE.Scene) {
     const stainTexture = this.radialTexture("#182123", "#18212300");
     const scuffTexture = this.radialTexture("#303b3b", "#303b3b00");
-    this.stainMaterial = new THREE.MeshBasicMaterial({
+    const stainMaterial = new THREE.MeshBasicMaterial({
       map: stainTexture,
       transparent: true,
       opacity: 0.2,
@@ -19,7 +16,7 @@ export class CinematicAtmosphere {
       polygonOffset: true,
       polygonOffsetFactor: -1,
     });
-    this.scuffMaterial = new THREE.MeshBasicMaterial({
+    const scuffMaterial = new THREE.MeshBasicMaterial({
       map: scuffTexture,
       transparent: true,
       opacity: 0.16,
@@ -60,7 +57,7 @@ export class CinematicAtmosphere {
       [-8.9, 7.6, 1.8, 0.55], [-1.2, 7.8, 2.2, 0.6], [5.7, 7.4, 2.0, 0.65],
     ];
     for (const [x, z, width, depth] of stains) {
-      const stain = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), this.stainMaterial);
+      const stain = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), stainMaterial);
       stain.rotation.x = -Math.PI / 2;
       stain.position.set(x, 0.014, z);
       this.scene.add(stain);
@@ -73,7 +70,7 @@ export class CinematicAtmosphere {
       [-5.2, 7.2, 0.7, 0.1, -0.12], [1.8, 6.1, 0.9, 0.12, 0.42],
     ];
     for (const [x, z, width, depth, rotation] of scuffs) {
-      const mark = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), this.scuffMaterial);
+      const mark = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), scuffMaterial);
       mark.rotation.set(-Math.PI / 2, 0, rotation);
       mark.position.set(x, 0.019, z);
       this.scene.add(mark);
