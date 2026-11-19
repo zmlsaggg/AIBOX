@@ -98,10 +98,8 @@ app.innerHTML = `
                     <li>Открой PowerShell и выполни команды:</li>
                   </ol>
                   <pre>git clone https://github.com/zmlsaggg/AIBOX.git
-cd AIBOX\\bridge
-npm install
-npx playwright install chromium
-npm start</pre>
+cd AIBOX
+powershell -ExecutionPolicy Bypass -File .\\bridge\\Start-Bridge.ps1</pre>
                   <ol start="3">
                     <li>В терминале найди строку <b>Pairing token</b> и скопируй значение после двоеточия.</li>
                     <li>Вставь значение в поле выше. Не закрывай окно PowerShell.</li>
