@@ -39,7 +39,7 @@ export function buildPrisonerPrompt(snapshot: PrisonSnapshot): string {
     '{"type":"speak","message":"What you say to the guard","narration":"..."}',
     '{"type":"wait","narration":"..."}',
     "ACTION RULES:",
-    "- move changes your destination; cautious is slower, normal is balanced, fast is quickest. Do not move through walls or assume pathfinding can bypass closed doors.",
+    "- move asks the game to calculate an A* route around known walls, furniture and closed doors. If the exact coordinate is blocked, the route planner may stop at the nearest reachable approach point. cautious is slower, normal is balanced, fast is quickest. Closed/locked doors remain impassable until opened.",
     "- inspect gathers information only when you are close enough. Do not claim an object was inspected if the game reports failure.",
     "- interact picks up a nearby loose item or opens/closes a nearby unlocked door. Use the exact item/door id.",
     "- use_item uses the item currently in your hand. The keycard can unlock a nearby checkpoint door. Do not claim success unless the next turn's state confirms it.",
