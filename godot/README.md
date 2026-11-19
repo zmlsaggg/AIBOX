@@ -6,7 +6,7 @@ This folder is the native game project. Open it with **Godot 4.7.2 Stable (stand
 
 - 3D prison block with solid walls, partitions, reinforced windows and collidable furniture.
 - Orthographic camera and cinematic light setup.
-- Player warden and prisoner use CharacterBody3D with imported Quaternius SWAT and Punk GLB models; movement uses acceleration, braking, sprint, floor snapping and move_and_slide().
+- Player warden and prisoner use CharacterBody3D with imported Tevy Dog Walker and Casual Walker GLB models; movement uses acceleration, braking, sprint, floor snapping and move_and_slide().
 - Doors use AnimatableBody3D, so their collision moves with the door animation.
 - Keycard, wrench and canteen use RigidBody3D; E picks up a nearby item/door and Q drops and throws a held item.
 - CCTV cameras rotate gently; characters have procedural walk and idle motion.
@@ -37,4 +37,4 @@ The GitHub CI job runs a headless import and short runtime smoke test using the 
 
 ## Migration status
 
-This is the next native vertical slice, not yet a full replacement of the older TypeScript prototype. Collision-aware route planning and the first rigged guard/prisoner models are now present. AI website sessions, vision cones, full guard patrols, inventory/economy parity, saving, and platform exports are still to be ported and validated. Do not remove the reference build until those systems are complete.
+This is the next native vertical slice, not yet a full replacement of the older TypeScript prototype. Collision-aware route planning and the first rigged and animated guard/prisoner models are now present. AI website sessions, vision cones, full guard patrols, inventory/economy parity, saving, and platform exports are still to be ported and validated. Do not remove the reference build until those systems are complete.
