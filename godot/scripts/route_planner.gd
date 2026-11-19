@@ -1,4 +1,4 @@
-extends Node
+extends Node3D
 
 const GRID_STEP: float = 0.5
 const MIN_X: float = -11.5
