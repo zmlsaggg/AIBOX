@@ -127,14 +127,6 @@ async function openAIWindow(providerId) {
   };
 }
 
-function getVisibleElement(document, selectors) {
-  for (const selector of selectors) {
-    const found = Array.from(document.querySelectorAll(selector)).find(isVisible);
-    if (found) return found;
-  }
-  return null;
-}
-
 async function sendPrompt(window, providerId, prompt) {
   const provider = PROVIDERS[providerId];
   const payload = JSON.stringify({ prompt, composers: provider.composers, sendButtons: provider.sendButtons });
@@ -165,8 +157,9 @@ async function sendPrompt(window, providerId, prompt) {
       composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: config.prompt }));
       composer.dispatchEvent(new Event("change", { bubbles: true }));
     } else {
-      composer.replaceChildren();
-      composer.textContent = config.prompt;
+      composer.focus();
+      document.execCommand("selectAll", false);
+      document.execCommand("insertText", false, config.prompt);
       composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: config.prompt }));
     }
 
@@ -303,6 +296,12 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
+  mainWindow.on("close", () => {
+    isQuitting = true;
+    for (const providerWindow of aiWindows.values()) {
+      if (!providerWindow.isDestroyed()) providerWindow.destroy();
+    }
+  });
 
   mainWindow.webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown") return;
