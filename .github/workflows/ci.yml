@@ -35,6 +35,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node.js for GLB compatibility conversion
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+      - name: Install GLB conversion dependencies
+        run: npm install
       - name: Setup Godot 4.7.2 Stable
         uses: chickensoft-games/setup-godot@v2
         with:
