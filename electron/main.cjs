@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, clipboard } = require("electron");
+const { execFile, spawnSync } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const crypto = require("node:crypto");
@@ -204,6 +205,49 @@ async function interruptAI() {
   return { interrupted: true };
 }
 
+async function openChromeExtensionSettings() {
+  const launch = (executable, args) => {
+    const child = execFile(executable, args, { detached: true, stdio: "ignore" }, (error) => {
+      if (error) console.warn("Could not open Chrome extension settings:", error.message);
+    });
+    child.unref();
+  };
+
+  if (process.platform === "win32") {
+    const roots = [
+      process.env.PROGRAMFILES,
+      process.env["PROGRAMFILES(X86)"],
+      process.env.LOCALAPPDATA,
+    ].filter(Boolean);
+    for (const root of roots) {
+      const executable = path.join(root, "Google", "Chrome", "Application", "chrome.exe");
+      try {
+        await fs.access(executable);
+        launch(executable, ["chrome://extensions/"]);
+        return true;
+      } catch {}
+    }
+  } else if (process.platform === "darwin") {
+    launch("open", ["-a", "Google Chrome", "chrome://extensions/"]);
+    return true;
+  } else {
+    for (const executable of ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
+      const located = spawnSync("which", [executable], { encoding: "utf8" });
+      if (located.status === 0 && located.stdout.trim()) {
+        launch(located.stdout.trim(), ["chrome://extensions/"]);
+        return true;
+      }
+    }
+  }
+
+  try {
+    await shell.openExternal("chrome://extensions/");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function installChromeConnector() {
   const source = app.isPackaged
     ? path.join(process.resourcesPath, "chrome-extension")
@@ -212,10 +256,20 @@ async function installChromeConnector() {
   await fs.access(path.join(source, "manifest.json"));
   await fs.mkdir(destination, { recursive: true });
   await fs.cp(source, destination, { recursive: true, force: true });
-  try { await shell.openExternal("chrome://extensions"); } catch {}
+  clipboard.writeText(destination);
+  const chromeOpened = await openChromeExtensionSettings();
   return {
     path: destination,
-    message: `Расширение скопировано. В Chrome открой chrome://extensions, включи «Режим разработчика» → «Загрузить распакованное расширение» и выбери эту папку: ${destination}. Затем обнови вкладку ChatGPT/DeepSeek/Gemini и вернись в AIBOX.`,
+    chromeOpened,
+    message: `Папка расширения скопирована в буфер обмена: ${destination}
+
+${chromeOpened ? "Chrome открыл chrome://extensions." : "Открой chrome://extensions вручную."}
+1. Включи «Режим разработчика».
+2. Нажми «Загрузить распакованное расширение».
+3. Вставь путь из буфера обмена и выбери эту папку.
+4. Оставь Chrome открытым, обнови вкладку выбранного ИИ и вернись в AIBOX.
+
+Это одноразовое подтверждение Chrome. Cookies и пароли остаются в твоём обычном профиле Chrome.`,
   };
 }
 
