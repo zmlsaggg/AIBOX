@@ -6,7 +6,7 @@ This folder is the native game project. Open it with **Godot 4.7.2 Stable (stand
 
 - 3D prison block with solid walls, partitions, reinforced windows and collidable furniture.
 - Orthographic camera and cinematic light setup.
-- Player warden and prisoner use CharacterBody3D with imported Tevy Dog Walker and Casual Walker GLB models; movement uses acceleration, braking, sprint, floor snapping and move_and_slide().
+- Player warden and prisoner use CharacterBody3D with imported Tevy Dog Walker and Casual Walker GLB models, each with a 56-bone rig and embedded idle/walk/look-around clips; movement uses acceleration, braking, sprint, floor snapping and move_and_slide().
 - Doors use AnimatableBody3D, so their collision moves with the door animation.
 - Keycard, wrench and canteen use RigidBody3D; E picks up a nearby item/door and Q drops and throws a held item.
 - CCTV cameras rotate gently; characters have procedural walk and idle motion.
@@ -27,10 +27,12 @@ This folder is the native game project. Open it with **Godot 4.7.2 Stable (stand
 ## Run
 
 1. Install Godot 4.7.2 Stable.
-2. Download the pinned CC0 character models:
-   - Windows: `powershell -ExecutionPolicy Bypass -File .\\scripts\\download_assets.ps1`
-   - Linux/macOS: `bash scripts/download_assets.sh`
-3. Import this folder in the Godot Project Manager (or open project.godot).
+2. Install the repository's Node.js development dependencies from the repository root: `npm install`. (This is only for preparing the source models; players do not need Node.js in the packaged game.)
+3. Download and convert the pinned CC0 character models:
+   - Windows: `powershell -ExecutionPolicy Bypass -File .\\godot\\scripts\\download_assets.ps1`
+   - Linux/macOS: `bash godot/scripts/download_assets.sh`
+   The scripts verify the source hashes and decompress Meshopt/quantized geometry into standard GLB files that Godot can import.
+4. Import this folder in the Godot Project Manager (or open project.godot).
 4. Press F6/F5 or run the main scene.
 
 The GitHub CI job runs a headless import and short runtime smoke test using the pinned 4.7.2 version.
