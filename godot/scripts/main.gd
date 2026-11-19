@@ -246,24 +246,45 @@ func _create_actor(label: String, position: Vector3, material: StandardMaterial3
 	var visual := Node3D.new()
 	visual.name = "VisualRoot"
 	actor.add_child(visual)
-	_add_actor_capsule(visual, "Torso", 0.25, 0.78, Vector3(0, 0.98, 0), material)
-	var skin_material := _material(Color("#c8a084"), 0.92)
-	var head_mesh := SphereMesh.new()
-	head_mesh.radius = 0.17
-	head_mesh.height = 0.34
-	var head := MeshInstance3D.new()
-	head.name = "Head"
-	head.mesh = head_mesh
-	head.material_override = skin_material
-	head.position = Vector3(0, 1.54, -0.015)
-	visual.add_child(head)
-	var dark_material := _material(Color("#202a2b"), 0.82)
-	_add_actor_capsule(visual, "LeftLeg", 0.085, 0.53, Vector3(-0.12, 0.4, 0), dark_material)
-	_add_actor_capsule(visual, "RightLeg", 0.085, 0.53, Vector3(0.12, 0.4, 0), dark_material)
-	_add_actor_capsule(visual, "LeftArm", 0.07, 0.62, Vector3(-0.29, 1.0, 0), material)
-	_add_actor_capsule(visual, "RightArm", 0.07, 0.62, Vector3(0.29, 1.0, 0), material)
+
+	var model_path := "res://assets/characters/guard_swat.glb" if player_controlled else "res://assets/characters/prisoner_punk.glb"
+	if ResourceLoader.exists(model_path):
+		var packed_model := load(model_path) as PackedScene
+		if packed_model:
+			var model := packed_model.instantiate()
+			model.name = "RiggedCharacter"
+			visual.add_child(model)
+			var imported_animation := _find_animation_player(model)
+			if imported_animation:
+				actor.call("set_animation_player", imported_animation)
+	else:
+		_add_actor_capsule(visual, "Torso", 0.25, 0.78, Vector3(0, 0.98, 0), material)
+		var skin_material := _material(Color("#c8a084"), 0.92)
+		var head_mesh := SphereMesh.new()
+		head_mesh.radius = 0.17
+		head_mesh.height = 0.34
+		var head := MeshInstance3D.new()
+		head.name = "Head"
+		head.mesh = head_mesh
+		head.material_override = skin_material
+		head.position = Vector3(0, 1.54, -0.015)
+		visual.add_child(head)
+		var dark_material := _material(Color("#202a2b"), 0.82)
+		_add_actor_capsule(visual, "LeftLeg", 0.085, 0.53, Vector3(-0.12, 0.4, 0), dark_material)
+		_add_actor_capsule(visual, "RightLeg", 0.085, 0.53, Vector3(0.12, 0.4, 0), dark_material)
+		_add_actor_capsule(visual, "LeftArm", 0.07, 0.62, Vector3(-0.29, 1.0, 0), material)
+		_add_actor_capsule(visual, "RightArm", 0.07, 0.62, Vector3(0.29, 1.0, 0), material)
 	add_child(actor)
 	return actor
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node as AnimationPlayer
+	for child in node.get_children():
+		var found := _find_animation_player(child)
+		if found:
+			return found
+	return null
 
 func _add_actor_capsule(parent: Node3D, label: String, radius: float, height: float, position: Vector3, material: Material) -> MeshInstance3D:
 	var mesh := CapsuleMesh.new()
