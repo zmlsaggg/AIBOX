@@ -2,6 +2,14 @@
 
 This folder is the native game project. Open it with **Godot 4.7.2 Stable (standard build, not .NET)** using project.godot.
 
+## Rendering and physicality
+
+- Desktop uses Godot Forward+ with AGX tonemapping, screen-space ambient occlusion/indirect lighting/reflections, volumetric fog and controlled bloom.
+- Android uses the Mobile renderer to keep the same scene playable on devices that cannot afford the full desktop post-processing stack.
+- Procedural roughness and normal detail are added to concrete, painted walls and metal; overhead fluorescent fixtures create alternating warm/cool light pools and shadows.
+- Loose props use distinct masses, surface friction, damping and bounce. Character collisions apply impulses to keycards, wrenches and canteens instead of making them immovable set dressing.
+- Use a desktop GPU for the full visual profile. The Android renderer intentionally omits some Forward+-only features such as SSIL/SSR/volumetric fog to preserve frame rate.
+
 ## Current vertical slice
 
 - 3D prison block with solid walls, partitions, reinforced windows and collidable furniture.
