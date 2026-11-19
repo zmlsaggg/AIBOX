@@ -266,12 +266,14 @@ func _create_actor(label: String, position: Vector3, material: StandardMaterial3
 	actor.add_child(visual)
 
 	var is_guard := label.to_lower().contains("guard") or label.to_lower() == "warden"
-	var model_path := "res://assets/characters/guard_swat.glb" if is_guard else "res://assets/characters/prisoner_punk.glb"
+	var model_path := "res://assets/characters/guard_dog_walker.glb" if is_guard else "res://assets/characters/prisoner_casual_walker.glb"
 	if ResourceLoader.exists(model_path):
 		var packed_model := load(model_path) as PackedScene
 		if packed_model:
 			var model := packed_model.instantiate()
 			model.name = "RiggedCharacter"
+			# Tevy humanoid rigs face +Z; gameplay movement and raycasts face -Z.
+			model.rotation.y = PI
 			visual.add_child(model)
 			var imported_skeleton := _find_skeleton(model)
 			if imported_skeleton:
