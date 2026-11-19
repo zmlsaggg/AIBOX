@@ -145,6 +145,10 @@ export class Character {
     return this.pickupAnimation !== null;
   }
 
+  get isMovingToTarget(): boolean {
+    return this.target !== null;
+  }
+
   getPickupHandPosition(): THREE.Vector3 {
     this.visual.updateMatrixWorld(true);
     return this.visual.localToWorld(new THREE.Vector3(0.34, 0.55, 0.28));
