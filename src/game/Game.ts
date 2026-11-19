@@ -250,7 +250,7 @@ export class Game {
         outcome = started
           ? {
               success: true,
-              summary: `A* found a route with ${route.length} waypoint(s) to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}) at ${action.pace} pace. Actual progress will be checked on the next turn.`,
+              summary: `A* found a route with ${route?.length ?? 0} waypoint(s) to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}) at ${action.pace} pace. Actual progress will be checked on the next turn.`,
             }
           : {
               success: false,
