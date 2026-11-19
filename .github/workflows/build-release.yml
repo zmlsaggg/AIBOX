@@ -1,6 +1,7 @@
 name: Build desktop and Android releases
 
 on:
+  workflow_call:
   push:
     tags:
       - "v*"
