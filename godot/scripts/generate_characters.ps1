@@ -36,9 +36,9 @@ if (-not (Test-Path (Join-Path $generator "public/assets/catalog.json")) -or
 }
 New-Item -ItemType Directory -Force -Path $destination | Out-Null
 $tsx = Join-Path $generator "node_modules/.bin/tsx.cmd"
-& $tsx (Join-Path $root "tools/aibox-characters/export-character.ts") --generator $generator --params (Join-Path $scriptDir "guard.params.json") --out (Join-Path $destination "guard.glb")
+& $tsx (Join-Path $root "tools/aibox-characters/export-character.ts") --generator $generator --params (Join-Path $root "tools/aibox-characters/guard.params.json") --out (Join-Path $destination "guard.glb")
 if ($LASTEXITCODE -ne 0) { throw "Guard character export failed." }
-& $tsx (Join-Path $root "tools/aibox-characters/export-character.ts") --generator $generator --params (Join-Path $scriptDir "prisoner.params.json") --out (Join-Path $destination "prisoner.glb")
+& $tsx (Join-Path $root "tools/aibox-characters/export-character.ts") --generator $generator --params (Join-Path $root "tools/aibox-characters/prisoner.params.json") --out (Join-Path $destination "prisoner.glb")
 if ($LASTEXITCODE -ne 0) { throw "Prisoner character export failed." }
 & node (Join-Path $scriptDir "verify-character-glb.mjs") (Join-Path $destination "guard.glb")
 if ($LASTEXITCODE -ne 0) { throw "Guard GLB validation failed." }
