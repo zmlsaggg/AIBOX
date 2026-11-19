@@ -26,6 +26,8 @@ interface Door {
 export class PrisonLayout {
   private readonly doors = new Map<string, Door>();
   private cameraMarkers = 0;
+  private ambientTime = 0;
+  private readonly cameraPivots: Array<{ pivot: THREE.Group; lens: THREE.MeshStandardMaterial; baseYaw: number; phase: number }> = [];
   private readonly materials = {
     concrete: new THREE.MeshStandardMaterial({ color: 0x59666a, roughness: 0.94 }),
     concreteDark: new THREE.MeshStandardMaterial({ color: 0x39464a, roughness: 0.96 }),
@@ -380,6 +382,11 @@ export class PrisonLayout {
 
   /** Advance hinged door visuals and their kinematic Rapier colliders on fixed physics ticks. */
   update(delta: number): void {
+    this.ambientTime += delta;
+    for (const camera of this.cameraPivots) {
+      camera.pivot.rotation.y = camera.baseYaw + Math.sin(this.ambientTime * 0.48 + camera.phase) * 0.12;
+      camera.lens.emissiveIntensity = 0.85 + (Math.sin(this.ambientTime * 1.6 + camera.phase) + 1) * 0.12;
+    }
     for (const door of this.doors.values()) {
       const difference = door.targetAngle - door.angle;
       if (Math.abs(difference) < 0.0015) {
@@ -638,15 +645,21 @@ export class PrisonLayout {
     const mount = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.22), this.materials.darkMetal);
     mount.position.set(x, 2.34, z);
     this.scene.add(mount);
+
+    const baseYaw = z > 0 ? Math.PI : 0;
+    const pivot = new THREE.Group();
+    pivot.position.set(x, 2.2, z);
+    pivot.rotation.y = baseYaw;
+    this.scene.add(pivot);
+
     const housing = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10), this.materials.metal);
-    housing.position.set(x, 2.2, z + (z < 0 ? 0.1 : -0.1));
     housing.scale.set(1.05, 0.72, 0.82);
-    this.scene.add(housing);
-    const lens = new THREE.Mesh(
-      new THREE.SphereGeometry(0.065, 12, 10),
-      new THREE.MeshStandardMaterial({ color: 0x60d3c5, emissive: 0x1d746c, emissiveIntensity: 1.1 }),
-    );
-    lens.position.set(x, 2.2, z + (z < 0 ? 0.22 : -0.22));
-    this.scene.add(lens);
+    pivot.add(housing);
+
+    const lensMaterial = new THREE.MeshStandardMaterial({ color: 0x60d3c5, emissive: 0x1d746c, emissiveIntensity: 1.1 });
+    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 10), lensMaterial);
+    lens.position.z = 0.22;
+    pivot.add(lens);
+    this.cameraPivots.push({ pivot, lens: lensMaterial, baseYaw, phase: this.cameraPivots.length * 1.7 });
   }
 }
