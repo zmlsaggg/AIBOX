@@ -27,11 +27,21 @@ function fallbackAlternatives(snapshot: Omit<PrisonSnapshot, "turn" | "history" 
     const locked = snapshot.doorStates
       .filter((door) => door.locked)
       .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
-    if (locked) candidates.push({
-      type: "use_item",
-      target: locked.id,
-      narration: `Try the held ${snapshot.prisoner.heldItem} on ${locked.id}.`,
-    });
+    if (locked) {
+      candidates.push(distance(locked.x, locked.z) <= 2.4
+        ? {
+            type: "use_item",
+            target: locked.id,
+            narration: `Try the held ${snapshot.prisoner.heldItem} on ${locked.id}.`,
+          }
+        : {
+            type: "move",
+            x: locked.x,
+            z: locked.z,
+            pace: "cautious",
+            narration: `Approach locked checkpoint ${locked.id} before using the held tool.`,
+          });
+    }
   }
 
   const nearbyItem = snapshot.looseItems
