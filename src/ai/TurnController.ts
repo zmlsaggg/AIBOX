@@ -118,13 +118,17 @@ export class TurnController {
       if (generation !== this.generation || controller.signal.aborted) return;
 
       const parsedDecision = parsePrisonerDecision(raw);
-      const decision = {
-        ...parsedDecision,
-        alternatives: parsedDecision.alternatives.length
-          ? parsedDecision.alternatives
-          : fallbackAlternatives(snapshot, parsedDecision.action),
-      };
       const failedSignatures = new Set(this.history.filter((entry) => !entry.success).slice(-5).map((entry) => signature(entry.action)));
+      const alternativeSignatures = new Set<string>([signature(parsedDecision.action)]);
+      const alternatives = [...parsedDecision.alternatives, ...fallbackAlternatives(snapshot, parsedDecision.action)]
+        .filter((candidate) => {
+          const key = signature(candidate);
+          if (alternativeSignatures.has(key) || failedSignatures.has(key)) return false;
+          alternativeSignatures.add(key);
+          return true;
+        })
+        .slice(0, 3);
+      const decision = { ...parsedDecision, alternatives };
       let selected = decision.action;
       let repetitionNote = "";
       if (failedSignatures.has(signature(selected))) {
