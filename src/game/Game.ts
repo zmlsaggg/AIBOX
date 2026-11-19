@@ -303,7 +303,7 @@ export class Game {
           outcome = {
             success: false,
             summary: door?.locked
-              ? `Interaction failed: ${door.id} is locked. Find and use the keycard before trying again.`
+              ? `Interaction failed: ${door.id} is locked. Find and use the keycard, or force the checkpoint with a wrench.`
               : `Interaction failed: "${action.target}" is not a nearby usable item or unlocked door.`,
           };
           this.callbacks.onEvent(`ИИ не может взаимодействовать с «${action.target}»: ${outcome.summary}`, "warning");
