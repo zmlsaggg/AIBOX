@@ -6,21 +6,48 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TARGET="$ROOT/assets/characters"
 mkdir -p "$TARGET"
 
-BASE="https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/0128ca510d653bb04d6d1e4885bd8890b5050b4f/public/glb/modular_men"
 download() {
   local name="$1"
   local url="$2"
+  local expected_bytes="$3"
+  local expected_sha="$4"
   local destination="$TARGET/$name"
-  if [[ -s "$destination" && "$(wc -c < "$destination")" -gt 100000 ]]; then
-    echo "Already present: $name"
+  local temporary="$destination.download"
+
+  if [[ -s "$destination" ]] &&
+     [[ "$(wc -c < "$destination" | tr -d ' ')" == "$expected_bytes" ]] &&
+     [[ "$(sha256sum "$destination" | cut -d ' ' -f1)" == "$expected_sha" ]]; then
+    echo "Verified cached asset: $name"
     return
   fi
+
   echo "Downloading $name ..."
-  curl --fail --location --retry 3 "$url" --output "$destination"
-  test -s "$destination"
-  test "$(wc -c < "$destination")" -gt 100000
+  rm -f "$temporary"
+  curl --fail --location --retry 3 "$url" --output "$temporary"
+
+  local actual_bytes
+  actual_bytes="$(wc -c < "$temporary" | tr -d ' ')"
+  [[ "$actual_bytes" == "$expected_bytes" ]] || {
+    echo "Unexpected size for $name: $actual_bytes bytes" >&2
+    exit 1
+  }
+
+  local actual_sha
+  actual_sha="$(sha256sum "$temporary" | cut -d ' ' -f1)"
+  [[ "$actual_sha" == "$expected_sha" ]] || {
+    echo "SHA-256 mismatch for $name: $actual_sha" >&2
+    exit 1
+  }
+
+  mv -f "$temporary" "$destination"
 }
 
-download "guard_swat.glb" "$BASE/Swat.glb"
-download "prisoner_punk.glb" "$BASE/Punk.glb"
-echo "AIBOX character assets are ready."
+download "guard_dog_walker.glb" \
+  "https://tevy.dev/models/dog-walker/v1/lod0.glb" \
+  "1574900" "404a67373dcd4200035c04fa9a6fd53b7156ef35397acef7ef9bc2db1d0ed1d5"
+
+download "prisoner_casual_walker.glb" \
+  "https://tevy.dev/models/casual-walker/v1/lod0.glb" \
+  "1789516" "60f7fec2c35fc46b848d99da4c67f43213eea6d8464aa05ac683ffacf2a576d7"
+
+echo "AIBOX CC0 humanoid characters are ready."
