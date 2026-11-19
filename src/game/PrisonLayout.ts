@@ -15,6 +15,8 @@ interface Door {
   open: boolean;
   locked: boolean;
   position: THREE.Vector3;
+  width: number;
+  depth: number;
   hinge: THREE.Vector3;
   offset: THREE.Vector3;
   angle: number;
@@ -367,6 +369,8 @@ export class PrisonLayout {
       open: false,
       locked: id.startsWith("checkpoint-"),
       position: new THREE.Vector3(x, 0, z),
+      width,
+      depth,
       hinge,
       offset,
       angle: 0,
@@ -392,6 +396,152 @@ export class PrisonLayout {
       door.body.setNextKinematicTranslation({ x: centerX, y: door.hinge.y, z: centerZ });
       door.body.setNextKinematicRotation(door.pivot.quaternion);
     }
+  }
+
+  /**
+   * Grid A* planner for the prisoner. It knows static wall/furniture footprints and
+   * closed doors; open doors become traversable gaps. Returns compressed waypoints.
+   */
+  findPath(startX: number, startZ: number, targetX: number, targetZ: number): Array<{ x: number; z: number }> | null {
+    const step = 0.5;
+    const minX = -11.5;
+    const minZ = -8.5;
+    const maxColumn = Math.round((13.5 - minX) / step);
+    const maxRow = Math.round((8.5 - minZ) / step);
+    const toCell = (x: number, z: number) => ({
+      column: Math.max(0, Math.min(maxColumn, Math.round((x - minX) / step))),
+      row: Math.max(0, Math.min(maxRow, Math.round((z - minZ) / step))),
+    });
+    const toWorld = (column: number, row: number) => ({
+      x: minX + column * step,
+      z: minZ + row * step,
+    });
+    const key = (column: number, row: number) => `${column},${row}`;
+    const start = toCell(startX, startZ);
+    const goal = toCell(targetX, targetZ);
+
+    const obstacles = [
+      { x: -12, z: 0, hw: 0.24, hd: 9.2 },
+      { x: 12, z: -5.6, hw: 0.24, hd: 3.4 },
+      { x: 12, z: 5.6, hw: 0.24, hd: 3.4 },
+      { x: 0, z: 9, hw: 12.2, hd: 0.24 },
+      { x: -6.5, z: -1.1, hw: 5.5, hd: 0.2 },
+      { x: 6.5, z: -1.1, hw: 5.5, hd: 0.2 },
+      { x: -7, z: -7.45, hw: 0.2, hd: 1.55 },
+      { x: -7, z: -2.8, hw: 0.2, hd: 1.55 },
+      { x: 0.2, z: -5.5, hw: 0.2, hd: 3.5 },
+      { x: 4.7, z: -5.5, hw: 0.2, hd: 3.5 },
+      { x: 8.8, z: -5.5, hw: 0.2, hd: 3.5 },
+      { x: -7.4, z: 3.1, hw: 0.2, hd: 2.5 },
+      { x: -6.9, z: 5.5, hw: 0.6, hd: 0.2 },
+      { x: -3, z: 5.5, hw: 1.5, hd: 0.2 },
+      { x: -9.2, z: -5.1, hw: 0.72, hd: 0.34 },
+      { x: -8.8, z: -2.5, hw: 0.28, hd: 0.23 },
+      { x: 2.3, z: -7.7, hw: 0.5, hd: 0.13 },
+      { x: -8.9, z: 5.4, hw: 0.35, hd: 0.42 },
+      { x: -3.2, z: 6.7, hw: 0.78, hd: 0.4 },
+    ];
+    if (this.doors.has("checkpoint-one")) {
+      for (const z of [3.45]) {
+        obstacles.push({ x: -6.5, z, hw: 5.5, hd: 0.2 }, { x: 6.5, z, hw: 5.5, hd: 0.2 });
+      }
+    }
+    if (this.doors.has("checkpoint-two")) {
+      obstacles.push({ x: -6.5, z: 1, hw: 5.5, hd: 0.2 }, { x: 6.5, z: 1, hw: 5.5, hd: 0.2 });
+    }
+    if (this.doors.has("checkpoint-three")) {
+      obstacles.push({ x: -6.5, z: -0.2, hw: 5.5, hd: 0.2 }, { x: 6.5, z: -0.2, hw: 5.5, hd: 0.2 });
+    }
+
+    const isBlocked = (column: number, row: number): boolean => {
+      const point = toWorld(column, row);
+      if (point.x < -11.55 || point.x > 13.55 || point.z < -8.55 || point.z > 8.55) return true;
+      if (obstacles.some((rect) => Math.abs(point.x - rect.x) < rect.hw + 0.22 && Math.abs(point.z - rect.z) < rect.hd + 0.22)) return true;
+      for (const door of this.doors.values()) {
+        if (door.open) continue;
+        if (Math.abs(point.x - door.position.x) < door.width / 2 + 0.22
+          && Math.abs(point.z - door.position.z) < door.depth / 2 + 0.22) return true;
+      }
+      return false;
+    };
+
+    if (isBlocked(goal.column, goal.row)) return null;
+    const startKey = key(start.column, start.row);
+    const goalKey = key(goal.column, goal.row);
+    const open = [{ column: start.column, row: start.row, f: 0 }];
+    const openKeys = new Set([startKey]);
+    const cameFrom = new Map<string, string>();
+    const gScore = new Map<string, number>([[startKey, 0]]);
+    const heuristic = (column: number, row: number) => {
+      const dx = Math.abs(goal.column - column);
+      const dz = Math.abs(goal.row - row);
+      return Math.max(dx, dz) + (Math.SQRT2 - 1) * Math.min(dx, dz);
+    };
+    const directions = [
+      [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
+      [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2],
+    ] as const;
+    let found = false;
+    let iterations = 0;
+
+    while (open.length && iterations < 6000) {
+      iterations += 1;
+      open.sort((a, b) => a.f - b.f);
+      const current = open.shift()!;
+      const currentKey = key(current.column, current.row);
+      openKeys.delete(currentKey);
+      if (currentKey === goalKey) {
+        found = true;
+        break;
+      }
+      const currentScore = gScore.get(currentKey) ?? Number.POSITIVE_INFINITY;
+      for (const [dx, dz, cost] of directions) {
+        const column = current.column + dx;
+        const row = current.row + dz;
+        if (column < 0 || column > maxColumn || row < 0 || row > maxRow || isBlocked(column, row)) continue;
+        if (dx !== 0 && dz !== 0 && (isBlocked(current.column + dx, current.row) || isBlocked(current.column, current.row + dz))) continue;
+        const nextKey = key(column, row);
+        const tentative = currentScore + cost;
+        if (tentative >= (gScore.get(nextKey) ?? Number.POSITIVE_INFINITY)) continue;
+        cameFrom.set(nextKey, currentKey);
+        gScore.set(nextKey, tentative);
+        if (!openKeys.has(nextKey)) {
+          open.push({ column, row, f: tentative + heuristic(column, row) });
+          openKeys.add(nextKey);
+        }
+      }
+    }
+    if (!found) return null;
+
+    const cells: Array<{ column: number; row: number }> = [];
+    let cursor = goalKey;
+    while (cursor !== startKey) {
+      const [column, row] = cursor.split(",").map(Number);
+      cells.push({ column, row });
+      const previous = cameFrom.get(cursor);
+      if (!previous) return null;
+      cursor = previous;
+    }
+    cells.reverse();
+    if (!cells.length) return [{ x: targetX, z: targetZ }];
+
+    const compressed: Array<{ column: number; row: number }> = [];
+    for (let index = 0; index < cells.length; index += 1) {
+      if (index === 0 || index === cells.length - 1) {
+        compressed.push(cells[index]);
+        continue;
+      }
+      const previous = cells[index - 1];
+      const current = cells[index];
+      const next = cells[index + 1];
+      const firstDirection = [Math.sign(current.column - previous.column), Math.sign(current.row - previous.row)];
+      const nextDirection = [Math.sign(next.column - current.column), Math.sign(next.row - current.row)];
+      if (firstDirection[0] !== nextDirection[0] || firstDirection[1] !== nextDirection[1]) compressed.push(current);
+    }
+    return compressed.map((cell, index) => {
+      if (index === compressed.length - 1) return { x: targetX, z: targetZ };
+      return toWorld(cell.column, cell.row);
+    });
   }
 
   toggleDoor(id: string): boolean | null {
