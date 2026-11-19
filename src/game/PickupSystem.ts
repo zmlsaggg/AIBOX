@@ -14,11 +14,12 @@ interface PickupItem {
   collider: Collider;
   halfHeight: number;
   heldBy: Character | null;
+  reservedBy: Character | null;
 }
 
 export class PickupSystem {
   private readonly items: PickupItem[] = [];
-  private heldItem: PickupItem | null = null;
+  private readonly heldItems = new Map<Character, PickupItem>();
 
   constructor(private readonly world: PhysicsWorld, private readonly scene: THREE.Scene) {
     this.addKeycard(-3.2, 0.035, 6.15);
@@ -113,13 +114,13 @@ export class PickupSystem {
         .setRestitution(0.12),
       body,
     );
-    this.items.push({ id, label, mesh, body, collider, halfHeight, heldBy: null });
+    this.items.push({ id, label, mesh, body, collider, halfHeight, heldBy: null, reservedBy: null });
   }
 
   /** Apply gravity only to loose items; the game world keeps zero gravity for character control. */
   applyGravity(delta: number): void {
     for (const item of this.items) {
-      if (item.heldBy) continue;
+      if (item.heldBy || item.reservedBy) continue;
       const position = item.body.translation();
       const velocity = item.body.linvel();
       const resting = position.y <= item.halfHeight + 0.025 && velocity.y <= 0.02;
@@ -149,7 +150,7 @@ export class PickupSystem {
   }
 
   pickupNearest(character: Character, maxDistance = 1.55, requestedName?: string): string | null {
-    if (this.heldItem || character.isPickingUp) return null;
+    if (this.heldItems.has(character) || character.isPickingUp) return null;
     const position = character.position;
     let nearest: PickupItem | null = null;
     let nearestDistance = maxDistance;
@@ -170,13 +171,16 @@ export class PickupSystem {
 
     const item = nearest;
     const started = character.startPickup(() => {
+      item.reservedBy = null;
       item.heldBy = character;
       item.body.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased, true);
       item.collider.setEnabled(false);
       item.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      this.heldItem = item;
+      this.heldItems.set(character, item);
     });
-    return started ? item.label : null;
+    if (!started) return null;
+    item.reservedBy = character;
+    return item.label;
   }
 
   dispose(): void {
@@ -185,6 +189,6 @@ export class PickupSystem {
       item.mesh.removeFromParent();
     }
     this.items.length = 0;
-    this.heldItem = null;
+    this.heldItems.clear();
   }
 }

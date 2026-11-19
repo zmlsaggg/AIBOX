@@ -25,6 +25,8 @@ export interface GameStats {
   alarmCooldown: number;
 }
 
+const PHYSICS_STEP = 1 / 60;
+
 const STARTING_MONEY: Record<PrisonDifficulty, number> = {
   standard: 1400,
   strict: 1800,
@@ -51,12 +53,15 @@ export class Game {
 
   private animationFrame = 0;
   private previousTime = 0;
+  private physicsAccumulator = 0;
   private money: number;
   private cameras = 2;
   private interruptCharges = 1;
   private alarmReadyAt = 0;
   private turn = 0;
   private cameraTarget = new THREE.Vector3(0, 0, 0);
+  private readonly overviewTarget = new THREE.Vector3(0, 0, 0);
+  private readonly cellTarget = new THREE.Vector3(-7.2, 0, -4.5);
   private cameraPreset: "overview" | "cell" = "overview";
   private lastAction = "Заключённый ожидает первого хода";
   private prisonerAlert = false;
@@ -158,6 +163,8 @@ export class Game {
   };
 
   private onKeyDown = (event: KeyboardEvent): void => {
+    const target = event.target;
+    if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
     const key = event.key.toLowerCase();
     if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "e", " "].includes(key)) {
       event.preventDefault();
@@ -183,8 +190,12 @@ export class Game {
     if (this.keys.has("d") || this.keys.has("arrowright")) x += 1;
 
     this.guard.setPlayerMovement(x + this.touchX, z + this.touchZ);
-    this.pickups.applyGravity(delta);
-    this.physics.step();
+    this.physicsAccumulator = Math.min(this.physicsAccumulator + delta, PHYSICS_STEP * 5);
+    while (this.physicsAccumulator >= PHYSICS_STEP) {
+      this.pickups.applyGravity(PHYSICS_STEP);
+      this.physics.step();
+      this.physicsAccumulator -= PHYSICS_STEP;
+    }
     this.guard.update(delta);
     this.prisoner.update(delta, true);
     for (const npc of this.hiredGuards) npc.update(delta);
@@ -200,7 +211,7 @@ export class Game {
     }
 
     this.cameraTarget.lerp(
-      this.cameraPreset === "overview" ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(-7.2, 0, -4.5),
+      this.cameraPreset === "overview" ? this.overviewTarget : this.cellTarget,
       Math.min(delta * 2.8, 1),
     );
     this.camera.position.x = this.cameraTarget.x;
@@ -234,12 +245,18 @@ export class Game {
           break;
         }
         const position = this.prisoner.position;
-        const directOpen = this.layout.toggleDoorNear(action.target, position.x, position.z, 2.4);
-        const nearest = directOpen === null
+        const target = action.target.trim().toLowerCase();
+        const isDoorTarget = /door|checkpoint|exit|gate/.test(target);
+        const directOpen = isDoorTarget
+          ? this.layout.toggleDoorNear(action.target, position.x, position.z, 2.4)
+          : null;
+        const nearest = directOpen === null && ["door", "nearest-door", "gate", "exit"].includes(target)
           ? this.layout.toggleNearestDoor(position.x, position.z, 2.4)
-          : { id: action.target, open: directOpen };
+          : directOpen === null ? null : { id: action.target, open: directOpen };
         this.callbacks.onEvent(
-          nearest ? `ИИ взаимодействует с дверью ${nearest.id}: ${nearest.open ? "открыта" : "закрыта"}` : `ИИ пытается взаимодействовать с «${action.target}»: ${action.narration}`,
+          nearest
+            ? `ИИ взаимодействует с дверью ${nearest.id}: ${nearest.open ? "открыта" : "закрыта"}`
+            : `ИИ не может взаимодействовать с «${action.target}»: объект не является доступной дверью или находится слишком далеко.`,
           nearest?.open ? "warning" : "normal",
         );
         break;
@@ -342,7 +359,13 @@ export class Game {
     await this.turnController.takeTurn({
       difficulty: this.difficulty,
       prisoner: { x: position.x, z: position.z, status: "в камере" },
-      visibleObjects: ["cell-door", "ventilation", "bed", "sink", "keycard", "wrench", "canteen"],
+      visibleObjects: [
+        "cell-door", "west-cell-door", "control-door", "outer-exit",
+        ...(this.difficulty !== "standard" ? ["checkpoint-one"] : []),
+        ...(this.difficulty === "special" || this.difficulty === "black-dolphin" ? ["checkpoint-two"] : []),
+        ...(this.difficulty === "black-dolphin" ? ["checkpoint-three"] : []),
+        "ventilation", "bed", "sink", "keycard", "wrench", "canteen",
+      ],
       recentEvents: [this.lastAction],
     });
   }
