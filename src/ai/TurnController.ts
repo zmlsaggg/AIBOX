@@ -80,7 +80,6 @@ export class TurnController {
         decision: { ...decision, action: selected },
         action: selected,
         narration: selected.narration,
-        outcome: { success: false, summary: "Action pending" },
       });
       const finalOutcome = repetitionNote
         ? { success: outcome.success, summary: `${outcome.summary} ${repetitionNote}` }
