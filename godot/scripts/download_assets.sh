@@ -3,15 +3,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPOSITORY_ROOT="$(cd "$ROOT/.." && pwd)"
 TARGET="$ROOT/assets/characters"
-mkdir -p "$TARGET"
+SOURCE_DIR="$REPOSITORY_ROOT/.aibox-source-assets"
+mkdir -p "$TARGET" "$SOURCE_DIR"
 
 download() {
   local name="$1"
   local url="$2"
   local expected_bytes="$3"
   local expected_sha="$4"
-  local destination="$TARGET/${name%.glb}.source.glb"
+  local destination="$SOURCE_DIR/${name%.glb}.source.glb"
   local temporary="$destination.download"
 
   if [[ -s "$destination" ]] &&
@@ -52,6 +54,5 @@ download "prisoner_casual_walker.glb" \
 
 echo "AIBOX CC0 humanoid characters are ready."
 
-REPOSITORY_ROOT="$(cd "$ROOT/.." && pwd)"
 echo "Converting compressed source GLBs into Godot-compatible GLB files..."
-node "$REPOSITORY_ROOT/tools/prepare-godot-assets.mjs" "$TARGET"
+node "$REPOSITORY_ROOT/tools/prepare-godot-assets.mjs" "$SOURCE_DIR" "$TARGET"
