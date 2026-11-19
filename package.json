@@ -64,10 +64,6 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    },
-    "portable": {
-      "artifactName": "AIBOX-${version}-portable.${ext}"
-    },
-    "publish": null
+    }
   }
 }
