@@ -9,6 +9,8 @@ extends CharacterBody3D
 @export var turn_response: float = 11.0
 
 var move_target: Vector3 = Vector3.ZERO
+var route_points: Array[Vector3] = []
+var route_index: int = 0
 var has_move_target: bool = false
 var gait_clock: float = 0.0
 var active: bool = false
@@ -30,11 +32,19 @@ func set_active(value: bool) -> void:
 		velocity.z = 0.0
 
 func set_move_target(target: Vector3) -> void:
-	move_target = target
-	has_move_target = true
+	set_move_route([target])
+
+func set_move_route(points: Array[Vector3]) -> void:
+	route_points = points.duplicate()
+	route_index = 0
+	has_move_target = not route_points.is_empty()
+	if has_move_target:
+		move_target = route_points.back()
 
 func clear_move_target() -> void:
 	has_move_target = false
+	route_points.clear()
+	route_index = 0
 
 func set_animation_player(player: AnimationPlayer) -> void:
 	animation_player = player
@@ -83,14 +93,17 @@ func _physics_process(delta: float) -> void:
 		if moving:
 			desired_direction = desired_direction.normalized()
 	else:
-		if has_move_target:
-			var difference := move_target - global_position
+		while has_move_target and route_index < route_points.size():
+			var difference := route_points[route_index] - global_position
 			difference.y = 0.0
 			if difference.length() < 0.24:
-				has_move_target = false
-			else:
-				desired_direction = difference.normalized()
-				moving = true
+				route_index += 1
+				continue
+			desired_direction = difference.normalized()
+			moving = true
+			break
+		if route_index >= route_points.size():
+			clear_move_target()
 
 	var speed := walk_speed
 	if controlled_by_player and Input.is_key_pressed(KEY_SHIFT):
