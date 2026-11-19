@@ -77,3 +77,11 @@ jobs:
           if grep -E "ERROR:|SCRIPT ERROR|Parse Error|AIBOX NAVIGATION SMOKE FAILED" godot-import.log godot-smoke.log; then
             exit 1
           fi
+      - name: Upload generated Godot characters
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aibox-godot-characters
+          path: godot/assets/characters/*.glb
+          if-no-files-found: error
+          retention-days: 30
