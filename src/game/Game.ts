@@ -251,14 +251,21 @@ export class Game {
         const position = this.prisoner.position;
         const route = this.layout.findPath(position.x, position.z, action.x, action.z);
         const started = route ? this.prisoner.moveAlong(route, action.pace) : false;
-        outcome = started
+        const resolvedTarget = route?.[route.length - 1];
+        const reachedRequestedTarget = resolvedTarget
+          ? Math.hypot(resolvedTarget.x - action.x, resolvedTarget.z - action.z) <= 1.2
+          : false;
+        outcome = started && resolvedTarget
           ? {
               success: true,
-              summary: `A* found a route with ${route?.length ?? 0} waypoint(s) to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}) at ${action.pace} pace. Actual progress will be checked on the next turn.`,
+              summary: reachedRequestedTarget
+                ? `A* verified a traversable route with ${route.length} waypoint(s) to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}). Actual progress will be checked on the next turn.`
+                : `A* found a safe approach route with ${route.length} waypoint(s). Requested point was blocked; actual reachable endpoint is (${resolvedTarget.x.toFixed(1)}, ${resolvedTarget.z.toFixed(1)}). Stop here and re-evaluate the obstacle or door.`,
+              resolvedMoveTarget: { x: resolvedTarget.x, z: resolvedTarget.z },
             }
           : {
               success: false,
-              summary: `No traversable route to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}). A wall, closed/locked door, or blocked target may be in the way.`,
+              summary: `No traversable route to (${action.x.toFixed(1)}, ${action.z.toFixed(1)}). The target may be isolated by walls or closed doors; choose a different reachable route from the navigation briefing.`,
             };
         this.callbacks.onEvent(
           started ? `ИИ строит маршрут (${route?.length ?? 0} точек, ${action.pace}): ${action.narration}` : `ИИ не нашёл путь: ${outcome.summary}`,
@@ -506,6 +513,7 @@ export class Game {
       ],
       doorStates: this.layout.getDoorStates(),
       looseItems: this.pickups.getItemStates(),
+      navigation: this.layout.getNavigationSnapshot(position.x, position.z, this.pickups.getItemStates()),
       knownFacts: this.knownFacts,
       objective: "Reach the outer-exit door at the east perimeter, unlock any checkpoint locks with the keycard, open the final exit, and move beyond the perimeter.",
       recentEvents: [this.lastAction],
