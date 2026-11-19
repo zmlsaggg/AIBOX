@@ -89,9 +89,12 @@ func _mesh_stats(node: Node) -> Dictionary:
 			continue
 		for surface in range(mesh.get_surface_count()):
 			var arrays := mesh.surface_get_arrays(surface)
-			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-			result.triangles += int(indices.size() / 3) if not indices.is_empty() else int(vertices.size() / 3)
+			var vertices = arrays[Mesh.ARRAY_VERTEX]
+			var indices = arrays[Mesh.ARRAY_INDEX]
+			if indices is PackedInt32Array and not indices.is_empty():
+				result.triangles += int(indices.size() / 3)
+			elif vertices is PackedVector3Array:
+				result.triangles += int(vertices.size() / 3)
 			var material := mesh.surface_get_material(surface)
 			if material is BaseMaterial3D and (material as BaseMaterial3D).albedo_texture != null:
 				result.textured_surfaces += 1
