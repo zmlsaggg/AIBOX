@@ -3,6 +3,7 @@ extends Node
 signal action_result(success: bool, message: String)
 
 @export var prisoner: CharacterBody3D
+var route_planner: Node
 @export var arena_min: Vector2 = Vector2(-11.0, -8.0)
 @export var arena_max: Vector2 = Vector2(13.0, 8.0)
 
@@ -31,8 +32,26 @@ func apply_json_response(raw_text: String) -> bool:
 			if x < arena_min.x or x > arena_max.x or z < arena_min.y or z > arena_max.y:
 				action_result.emit(false, "Move target is outside the prison perimeter.")
 				return false
-			prisoner.call("set_move_target", Vector3(x, prisoner.global_position.y, z))
-			action_result.emit(true, "Prisoner received a validated movement target.")
+			if route_planner == null:
+				action_result.emit(false, "Native route planner is not initialized.")
+				return false
+			var requested_target := Vector3(x, prisoner.global_position.y, z)
+			var route_result: Dictionary = route_planner.call("find_route", prisoner.global_position, requested_target)
+			if not route_result.get("ok", false):
+				action_result.emit(false, str(route_result.get("reason", "No traversable route to target.")))
+				return false
+			var route_points: Array[Vector3] = []
+			for point in route_result.get("points", []):
+				if point is Vector3:
+					route_points.append(point)
+			if route_points.is_empty():
+				route_points.append(route_result.get("approach", requested_target))
+			prisoner.call("set_move_route", route_points)
+			var approach: Vector3 = route_result.get("approach", requested_target)
+			var description := "verified route with %s waypoint(s)" % str(route_points.size())
+			if not route_result.get("reaches_target", false):
+				description += "; target is obstructed, safe approach is (%.1f, %.1f)" % [approach.x, approach.z]
+			action_result.emit(true, "Prisoner starts %s." % description)
 			return true
 		"wait":
 			if prisoner:
