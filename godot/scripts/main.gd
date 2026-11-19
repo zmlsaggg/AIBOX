@@ -5,10 +5,12 @@ const SecurityDoorScript = preload("res://scripts/security_door.gd")
 const PhysicsItemScript = preload("res://scripts/physics_item.gd")
 const AmbientCameraScript = preload("res://scripts/ambient_camera.gd")
 const AITurnControllerScript = preload("res://scripts/ai_turn_controller.gd")
+const RoutePlannerScript = preload("res://scripts/route_planner.gd")
 
 var guard: CharacterBody3D
 var prisoner: CharacterBody3D
 var ai_controller: Node
+var route_planner: Node
 var held_item: RigidBody3D
 var doors: Array[AnimatableBody3D] = []
 var security_cameras: Array[Node3D] = []
@@ -47,8 +49,24 @@ func _ready() -> void:
 	_build_ui()
 	guard.call("set_active", false)
 	prisoner.call("set_active", false)
+	route_planner = RoutePlannerScript.new()
+	route_planner.name = "RoutePlanner"
+	add_child(route_planner)
+	await get_tree().physics_frame
+	_rebuild_navigation()
+	var route_smoke: Dictionary = route_planner.call(
+		"find_route",
+		prisoner.global_position,
+		prisoner.global_position + Vector3(-1.0, 0.0, 0.0)
+	)
+	if not route_smoke.get("ok", false):
+		push_error("AIBOX NAVIGATION SMOKE FAILED: %s" % str(route_smoke.get("reason", "No route")))
+	else:
+		print("AIBOX NAVIGATION SMOKE OK: %s waypoint(s)." % str(route_smoke.get("waypoint_count", 0)))
+
 	ai_controller = AITurnControllerScript.new()
 	ai_controller.prisoner = prisoner
+	ai_controller.route_planner = route_planner
 	ai_controller.action_result.connect(_on_ai_action_result)
 	add_child(ai_controller)
 
@@ -246,24 +264,61 @@ func _create_actor(label: String, position: Vector3, material: StandardMaterial3
 	var visual := Node3D.new()
 	visual.name = "VisualRoot"
 	actor.add_child(visual)
-	_add_actor_capsule(visual, "Torso", 0.25, 0.78, Vector3(0, 0.98, 0), material)
-	var skin_material := _material(Color("#c8a084"), 0.92)
-	var head_mesh := SphereMesh.new()
-	head_mesh.radius = 0.17
-	head_mesh.height = 0.34
-	var head := MeshInstance3D.new()
-	head.name = "Head"
-	head.mesh = head_mesh
-	head.material_override = skin_material
-	head.position = Vector3(0, 1.54, -0.015)
-	visual.add_child(head)
-	var dark_material := _material(Color("#202a2b"), 0.82)
-	_add_actor_capsule(visual, "LeftLeg", 0.085, 0.53, Vector3(-0.12, 0.4, 0), dark_material)
-	_add_actor_capsule(visual, "RightLeg", 0.085, 0.53, Vector3(0.12, 0.4, 0), dark_material)
-	_add_actor_capsule(visual, "LeftArm", 0.07, 0.62, Vector3(-0.29, 1.0, 0), material)
-	_add_actor_capsule(visual, "RightArm", 0.07, 0.62, Vector3(0.29, 1.0, 0), material)
+
+	var is_guard := label.to_lower().contains("guard") or label.to_lower() == "warden"
+	var model_path := "res://assets/characters/guard_dog_walker.glb" if is_guard else "res://assets/characters/prisoner_casual_walker.glb"
+	if ResourceLoader.exists(model_path):
+		var packed_model := load(model_path) as PackedScene
+		if packed_model:
+			var model := packed_model.instantiate()
+			model.name = "RiggedCharacter"
+			# Tevy humanoid rigs face +Z; gameplay movement and raycasts face -Z.
+			model.rotation.y = PI
+			visual.add_child(model)
+			var imported_skeleton := _find_skeleton(model)
+			if imported_skeleton:
+				actor.call("set_skeleton", imported_skeleton)
+			var imported_animation := _find_animation_player(model)
+			if imported_animation and not imported_animation.get_animation_list().is_empty():
+				actor.call("set_animation_player", imported_animation)
+	else:
+		_add_actor_capsule(visual, "Torso", 0.25, 0.78, Vector3(0, 0.98, 0), material)
+		var skin_material := _material(Color("#c8a084"), 0.92)
+		var head_mesh := SphereMesh.new()
+		head_mesh.radius = 0.17
+		head_mesh.height = 0.34
+		var head := MeshInstance3D.new()
+		head.name = "Head"
+		head.mesh = head_mesh
+		head.material_override = skin_material
+		head.position = Vector3(0, 1.54, -0.015)
+		visual.add_child(head)
+		var dark_material := _material(Color("#202a2b"), 0.82)
+		_add_actor_capsule(visual, "LeftLeg", 0.085, 0.53, Vector3(-0.12, 0.4, 0), dark_material)
+		_add_actor_capsule(visual, "RightLeg", 0.085, 0.53, Vector3(0.12, 0.4, 0), dark_material)
+		_add_actor_capsule(visual, "LeftArm", 0.07, 0.62, Vector3(-0.29, 1.0, 0), material)
+		_add_actor_capsule(visual, "RightArm", 0.07, 0.62, Vector3(0.29, 1.0, 0), material)
+	actor.add_to_group("navigation_actors")
 	add_child(actor)
 	return actor
+
+func _find_skeleton(node: Node) -> Skeleton3D:
+	if node is Skeleton3D:
+		return node as Skeleton3D
+	for child in node.get_children():
+		var found := _find_skeleton(child)
+		if found:
+			return found
+	return null
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node as AnimationPlayer
+	for child in node.get_children():
+		var found := _find_animation_player(child)
+		if found:
+			return found
+	return null
 
 func _add_actor_capsule(parent: Node3D, label: String, radius: float, height: float, position: Vector3, material: Material) -> MeshInstance3D:
 	var mesh := CapsuleMesh.new()
@@ -291,6 +346,39 @@ func _create_camera_rig() -> void:
 	camera.position = Vector3.ZERO
 	camera_rig.add_child(camera)
 	camera.current = true
+
+func _rebuild_navigation() -> void:
+	if route_planner == null:
+		return
+	var excluded: Array[RID] = []
+	for character in get_tree().get_nodes_in_group("navigation_actors"):
+		if character is CollisionObject3D:
+			excluded.append(character.get_rid())
+	for item in get_tree().get_nodes_in_group("pickup_items"):
+		if item is CollisionObject3D:
+			excluded.append(item.get_rid())
+	route_planner.call("rebuild", excluded)
+
+func get_ai_navigation_briefing() -> Dictionary:
+	if route_planner == null or prisoner == null:
+		return {"reachable": [], "blocked": []}
+	var targets: Array[Dictionary] = []
+	for item in get_tree().get_nodes_in_group("pickup_items"):
+		if item is RigidBody3D and item != held_item:
+			targets.append({
+				"id": str(item.get("item_id")),
+				"kind": "item",
+				"x": item.global_position.x,
+				"z": item.global_position.z,
+			})
+	for door in doors:
+		targets.append({
+			"id": door.name,
+			"kind": "door",
+			"x": door.global_position.x,
+			"z": door.global_position.z,
+		})
+	return route_planner.call("get_reachable_options", prisoner.global_position, targets)
 
 func _build_physics_items() -> void:
 	_create_item("keycard", "Security keycard", Vector3(-8.0, 1.0, -3.2), Color("#4e9a92"), Vector3(0.16, 0.04, 0.1))
@@ -593,6 +681,7 @@ func _hire_guard() -> void:
 	var npc := _create_actor("Hired guard %s" % str(hired_guards.size() + 1), Vector3(-2.0 + hired_guards.size() * 1.3, 0, 6.4), guard_material, false)
 	npc.call("set_active", true)
 	hired_guards.append(npc)
+	_rebuild_navigation()
 	event_label.text = "Охранник заступил на пост."
 	_update_hud()
 
@@ -622,6 +711,8 @@ func _interact() -> void:
 	if collider and collider.has_method("toggle"):
 		collider.call("toggle")
 		event_label.text = "Дверь открыта или закрыта."
+		await get_tree().create_timer(0.82).timeout
+		_rebuild_navigation()
 	elif collider is RigidBody3D and collider.is_in_group("pickup_items"):
 		_pickup_item(collider as RigidBody3D)
 	else:

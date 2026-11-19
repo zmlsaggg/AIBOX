@@ -10,3 +10,6 @@ dist
 godot/.godot/
 godot/export.cfg
 godot/export_presets.cfg
+
+# Original compressed model files stay outside the Godot import root
+.aibox-source-assets/

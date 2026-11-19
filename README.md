@@ -133,7 +133,7 @@ The Android layout includes an on-screen movement joystick and an interaction bu
 
 ### Automated GitHub Releases
 
-The workflow `.github/workflows/build-release.yml` builds the Windows installer, portable EXE and Android APK on pull requests and manual runs. Those runs upload downloadable Actions Artifacts.
+The workflow `.github/workflows/build-release.yml` builds the Windows installer, portable EXE and Android APK on pull requests and manual runs. Pull requests upload temporary Actions Artifacts. Successful builds on `main` create a normal GitHub Release (not a prerelease) and mark it as **Latest Release** automatically. Stable `v*` tags also create latest releases; tags containing `alpha`, `beta` or `rc` remain prereleases.
 
 To publish a versioned GitHub Release with all three binaries attached, push a version tag:
 

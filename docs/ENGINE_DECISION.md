@@ -17,16 +17,18 @@ AIBOX is a small-team, top-down 3D prison simulation. Its requirements are an ed
 
 ## Native migration status
 
-The initial Godot vertical slice is now committed:
+The native Godot vertical slice now includes:
 - `godot/project.godot` and a native main scene;
 - collision-based prison walls, cell partitions, windows and collidable furniture;
-- `CharacterBody3D` controllers with acceleration, braking, sprint and procedural motion;
+- `CharacterBody3D` controllers with acceleration, braking, sprint and imported character animations;
+- Quaternius SWAT guard and Punk prisoner GLB models (CC0 1.0; see `godot/ASSET_LICENSES.md`);
 - `AnimatableBody3D` doors whose collision follows their opening animation;
 - `RigidBody3D` keycard, wrench and canteen pickups, including grab/drop and impulse throwing;
-- 3D lights, orthographic camera, sweeping cameras and a native intro/HUD;
-- a strict action validator that currently handles movement and wait actions.
+- an `AStarGrid2D` navigation planner whose walkability grid is sampled against actual physics colliders;
+- route validation that sends native characters along waypoint chains and reports safe approach points for blocked targets;
+- 3D lights, orthographic camera, sweeping cameras and a native intro/HUD.
 
-The Godot build is checked headlessly in GitHub Actions with the exact 4.7.2 stable editor. The native project is an early migration slice; AI web sessions, full navigation, guard patrol logic, all economy systems, persistence, and Android/Windows exports are not yet ported. Do not switch public releases to Godot until those features and platform builds have been validated.
+GitHub Actions downloads the pinned character assets, imports them with Godot 4.7.2 Stable, checks that both GLBs contain skeletons and animation clips, then runs a native scene smoke test. AI web sessions, full guard patrols/vision, inventory/economy parity, persistence, and Android/Windows Godot exports are not yet ported. Do not switch public releases to Godot until those features and platform builds have been validated.
 
 ## Target architecture
 
@@ -34,13 +36,13 @@ The Godot build is checked headlessly in GitHub Actions with the exact 4.7.2 sta
 - **Gameplay language:** GDScript. Keep gameplay, scene orchestration, interactions, animation and UI inside the Godot project.
 - **Rendering:** Godot 3D renderer with an angled orthographic camera and baked/real-time lighting chosen for the target hardware.
 - **Physics:** Godot physics bodies, collision shapes, raycasts and areas. Do not keep Rapier as a second physics authority after the port.
-- **AI integration:** the Windows prototype now hosts provider pages inside Electron with a persistent per-provider session and no pairing token. The Godot port still needs a native browser/session integration; do not reintroduce a player-facing local Node service or manual token workflow.
+- **AI integration:** the Windows prototype hosts provider pages inside Electron with persistent per-provider sessions and no pairing token. The Godot port needs a native embedded-browser/session integration using the same no-token player experience; do not reintroduce a player-facing local Node service or manual token workflow.
 - **Builds:** Godot export templates for Windows and Android. Keep the current GitHub Actions releases until the Godot exports have feature parity.
 
 ## Migration policy
 
 1. Keep the current TypeScript/Electron build as a runnable reference while the native Godot project is developed in `godot/`.
-2. Port the prison layout, door states and collision first; validate movement and camera scale before porting AI.
+2. Port the prison layout, door states, collision-sampled navigation and route following; validate movement and camera scale before porting AI.
 3. Port the guard/prisoner controllers, pickup/drop interactions and animations.
 4. Port budgets, cameras, alarms, difficulty modifiers and the control-room UI.
 5. Port the AI contracts and strict action parser; connect to the existing local Browser Bridge.

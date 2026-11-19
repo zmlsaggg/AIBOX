@@ -22,25 +22,27 @@ function fallbackAlternatives(snapshot: Omit<PrisonSnapshot, "turn" | "history" 
   const px = snapshot.prisoner.x;
   const pz = snapshot.prisoner.z;
   const distance = (x: number, z: number) => Math.hypot(x - px, z - pz);
+  const routeFor = (kind: "item" | "door", id: string) =>
+    snapshot.navigation?.reachable.find((option) => option.kind === kind && option.id === id);
+  const moveTo = (option: NonNullable<typeof snapshot.navigation>["reachable"][number], narration: string): PrisonerAction => ({
+    type: "move",
+    x: option.approachX,
+    z: option.approachZ,
+    pace: "cautious",
+    narration: `${narration} Follow the verified route through ${option.route.length} waypoint(s).`,
+  });
 
   if (snapshot.prisoner.heldItem === "keycard" || snapshot.prisoner.heldItem === "wrench") {
     const locked = snapshot.doorStates
       .filter((door) => door.locked)
       .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
     if (locked) {
-      candidates.push(distance(locked.x, locked.z) <= 2.4
-        ? {
-            type: "use_item",
-            target: locked.id,
-            narration: `Try the held ${snapshot.prisoner.heldItem} on ${locked.id}.`,
-          }
-        : {
-            type: "move",
-            x: locked.x,
-            z: locked.z,
-            pace: "cautious",
-            narration: `Approach locked checkpoint ${locked.id} before using the held tool.`,
-          });
+      const option = routeFor("door", locked.id);
+      if (option) {
+        candidates.push(distance(option.approachX, option.approachZ) <= 2.4
+          ? { type: "use_item", target: locked.id, narration: `Use the held ${snapshot.prisoner.heldItem} on nearby ${locked.id}.` }
+          : moveTo(option, `Approach the verified near side of locked checkpoint ${locked.id}.`));
+      }
     }
   }
 
@@ -48,10 +50,15 @@ function fallbackAlternatives(snapshot: Omit<PrisonSnapshot, "turn" | "history" 
     .filter((item) => !item.held && !snapshot.prisoner.heldItem)
     .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
   if (nearbyItem) {
-    if (distance(nearbyItem.x, nearbyItem.z) <= 2.4) {
-      candidates.push({ type: "interact", target: nearbyItem.id, narration: `Pick up nearby ${nearbyItem.id}.` });
-    } else {
-      candidates.push({ type: "move", x: nearbyItem.x, z: nearbyItem.z, pace: "cautious", narration: `Approach ${nearbyItem.id}.` });
+    const option = routeFor("item", nearbyItem.id);
+    if (option) {
+      candidates.push(distance(option.approachX, option.approachZ) <= 2.4
+        ? { type: "interact", target: nearbyItem.id, narration: `Pick up reachable ${nearbyItem.id}.` }
+        : moveTo(option, `Approach ${nearbyItem.id} using its verified route.`));
+    } else if (!snapshot.navigation) {
+      candidates.push(distance(nearbyItem.x, nearbyItem.z) <= 2.4
+        ? { type: "interact", target: nearbyItem.id, narration: `Pick up nearby ${nearbyItem.id}.` }
+        : { type: "move", x: nearbyItem.x, z: nearbyItem.z, pace: "cautious", narration: `Approach ${nearbyItem.id}.` });
     }
   }
 
@@ -59,11 +66,23 @@ function fallbackAlternatives(snapshot: Omit<PrisonSnapshot, "turn" | "history" 
     .filter((door) => !door.locked && !door.open)
     .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
   if (nearbyDoor) {
-    candidates.push(distance(nearbyDoor.x, nearbyDoor.z) <= 2.4
-      ? { type: "interact", target: nearbyDoor.id, narration: `Open nearby ${nearbyDoor.id}.` }
-      : { type: "move", x: nearbyDoor.x, z: nearbyDoor.z, pace: "normal", narration: `Approach ${nearbyDoor.id}.` });
+    const option = routeFor("door", nearbyDoor.id);
+    if (option) {
+      candidates.push(distance(option.approachX, option.approachZ) <= 2.4
+        ? { type: "interact", target: nearbyDoor.id, narration: `Open reachable ${nearbyDoor.id}.` }
+        : moveTo(option, `Approach ${nearbyDoor.id} from the verified side.`));
+    } else if (!snapshot.navigation) {
+      candidates.push(distance(nearbyDoor.x, nearbyDoor.z) <= 2.4
+        ? { type: "interact", target: nearbyDoor.id, narration: `Open nearby ${nearbyDoor.id}.` }
+        : { type: "move", x: nearbyDoor.x, z: nearbyDoor.z, pace: "normal", narration: `Approach ${nearbyDoor.id}.` });
+    }
   }
 
+  if (snapshot.navigation) {
+    for (const area of snapshot.navigation.freeAreas.slice(0, 2)) {
+      candidates.push(moveTo(area, `Explore accessible area ${area.label}.`));
+    }
+  }
   candidates.push({ type: "wait", narration: "Pause and reassess the prison state." });
   const seen = new Set([signature(primary)]);
   return candidates.filter((candidate) => {
@@ -159,6 +178,9 @@ export class TurnController {
         action: selected,
         narration: selected.narration,
       });
+      const recordedAction: PrisonerAction = selected.type === "move" && outcome.resolvedMoveTarget
+        ? { ...selected, x: outcome.resolvedMoveTarget.x, z: outcome.resolvedMoveTarget.z }
+        : selected;
       const finalOutcome = repetitionNote
         ? { success: outcome.success, summary: `${outcome.summary} ${repetitionNote}` }
         : outcome;
@@ -167,7 +189,7 @@ export class TurnController {
       this.history.push({
         turn,
         intent: decision.intent,
-        action: selected,
+        action: recordedAction,
         outcome: finalOutcome.summary,
         success: finalOutcome.success,
         memoryUpdate: decision.memoryUpdate,
@@ -176,7 +198,7 @@ export class TurnController {
       if (decision.memoryUpdate) {
         this.memorySummary = `${this.memorySummary} ${decision.memoryUpdate}`.trim().slice(-1800);
       }
-      this.onDecision({ ...decision, action: selected }, this.history.slice(), this.memorySummary);
+      this.onDecision({ ...decision, action: recordedAction }, this.history.slice(), this.memorySummary);
       this.setState("idle", `Ход ${turn} завершён · ${finalOutcome.success ? "успех" : "неудача"}`);
     } catch (error) {
       if (generation !== this.generation) return;
