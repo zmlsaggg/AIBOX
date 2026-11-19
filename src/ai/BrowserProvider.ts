@@ -70,7 +70,7 @@ export class BrowserProvider implements AIProvider {
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") throw error;
-      throw new Error("Browser Bridge не запущен или недоступен. Открой PowerShell в папке AIBOX\\bridge и выполни npm start.");
+      throw new Error("Browser Bridge не запущен. Запусти AIBOX\\bridge\\Start-Bridge.ps1 через PowerShell.");
     }
 
     const data = await response.json() as T & { error?: string };
