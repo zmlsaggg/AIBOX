@@ -42,6 +42,8 @@ export class Game {
   private readonly camera: THREE.OrthographicCamera;
   private readonly physics: InstanceType<typeof RAPIER.World>;
   private readonly layout: PrisonLayout;
+  private readonly environment: EnvironmentDetails;
+  private readonly atmosphere: CinematicAtmosphere;
   private readonly pickups: PickupSystem;
   private readonly guard: Character;
   private readonly prisoner: Character;
@@ -114,8 +116,8 @@ export class Game {
 
     this.physics = new RAPIER.World({ x: 0, y: 0, z: 0 });
     this.layout = new PrisonLayout(this.scene, this.physics, difficulty);
-    new EnvironmentDetails(this.scene);
-    new CinematicAtmosphere(this.scene);
+    this.environment = new EnvironmentDetails(this.scene);
+    this.atmosphere = new CinematicAtmosphere(this.scene);
     this.pickups = new PickupSystem(this.physics, this.scene);
     this.guard = new Character(this.physics, this.scene, "guard", -5.7, 6.8, "PLAYER GUARD");
     this.prisoner = new Character(this.physics, this.scene, "prisoner", -9.2, -3.6, "AI PRISONER");
@@ -211,6 +213,8 @@ export class Game {
     this.prisoner.update(delta, true);
     for (const npc of this.hiredGuards) npc.update(delta);
     this.pickups.update();
+    this.environment.update(delta);
+    this.atmosphere.update(delta);
 
     const prisonerPosition = this.prisoner.position;
     this.prisonerAlert = !this.hasEscaped && prisonerPosition.x > 9.6 && Math.abs(prisonerPosition.z) < 2.6;
