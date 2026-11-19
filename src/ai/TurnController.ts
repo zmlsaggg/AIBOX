@@ -45,7 +45,7 @@ function fallbackAlternatives(snapshot: Omit<PrisonSnapshot, "turn" | "history" 
   }
 
   const nearbyItem = snapshot.looseItems
-    .filter((item) => !item.held)
+    .filter((item) => !item.held && !snapshot.prisoner.heldItem)
     .sort((a, b) => distance(a.x, a.z) - distance(b.x, b.z))[0];
   if (nearbyItem) {
     if (distance(nearbyItem.x, nearbyItem.z) <= 2.4) {
