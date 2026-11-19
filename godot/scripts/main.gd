@@ -264,8 +264,11 @@ func _create_actor(label: String, position: Vector3, material: StandardMaterial3
 			var model := packed_model.instantiate()
 			model.name = "RiggedCharacter"
 			visual.add_child(model)
+			var imported_skeleton := _find_skeleton(model)
+			if imported_skeleton:
+				actor.call("set_skeleton", imported_skeleton)
 			var imported_animation := _find_animation_player(model)
-			if imported_animation:
+			if imported_animation and not imported_animation.get_animation_list().is_empty():
 				actor.call("set_animation_player", imported_animation)
 	else:
 		_add_actor_capsule(visual, "Torso", 0.25, 0.78, Vector3(0, 0.98, 0), material)
@@ -287,6 +290,15 @@ func _create_actor(label: String, position: Vector3, material: StandardMaterial3
 	actor.add_to_group("navigation_actors")
 	add_child(actor)
 	return actor
+
+func _find_skeleton(node: Node) -> Skeleton3D:
+	if node is Skeleton3D:
+		return node as Skeleton3D
+	for child in node.get_children():
+		var found := _find_skeleton(child)
+		if found:
+			return found
+	return null
 
 func _find_animation_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:
