@@ -5,8 +5,8 @@ const MIN_X: float = -11.5
 const MIN_Z: float = -8.5
 const GRID_WIDTH: int = 51
 const GRID_HEIGHT: int = 35
-const WALKER_RADIUS: float = 0.29
-const WALKER_HEIGHT: float = 1.68
+const WALKER_RADIUS: float = 0.34
+const WALKER_HEIGHT: float = 1.8
 const APPROACH_RADIUS_CELLS: int = 4
 
 var grid := AStarGrid2D.new()
