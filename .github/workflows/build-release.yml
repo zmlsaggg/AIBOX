@@ -104,3 +104,4 @@ jobs:
           files: |
             release-assets/windows/*.exe
             release-assets/android/*.apk
+          fail_on_unmatched_files: true
