@@ -10,6 +10,7 @@ declare global {
       }>;
       generate(prompt: string): Promise<string>;
       interrupt(): Promise<{ interrupted: boolean }>;
+      installChromeConnector(): Promise<{ path: string; message: string }>;
     };
   }
 }
