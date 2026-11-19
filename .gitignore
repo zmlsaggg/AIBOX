@@ -5,3 +5,8 @@ dist
 .env
 .env.*
 !.env.example
+
+# Godot generated editor/import data
+godot/.godot/
+godot/export.cfg
+godot/export_presets.cfg
