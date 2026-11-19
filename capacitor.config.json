@@ -1,0 +1,8 @@
+{
+  "appId": "com.zmlsaggg.aibox",
+  "appName": "AIBOX",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
