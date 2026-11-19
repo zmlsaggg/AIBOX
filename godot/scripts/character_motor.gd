@@ -15,6 +15,13 @@ var has_move_target: bool = false
 var gait_clock: float = 0.0
 var active: bool = false
 var animation_player: AnimationPlayer
+var skeleton: Skeleton3D
+var rest_bone_rotations: Dictionary = {}
+var left_thigh_bone: int = -1
+var right_thigh_bone: int = -1
+var left_upper_arm_bone: int = -1
+var right_upper_arm_bone: int = -1
+var spine_bone: int = -1
 var idle_animation: StringName = &""
 var walk_animation: StringName = &""
 
@@ -50,6 +57,55 @@ func set_animation_player(player: AnimationPlayer) -> void:
 	animation_player = player
 	idle_animation = _find_animation(["idle", "stand", "breath"])
 	walk_animation = _find_animation(["walk", "run", "move"])
+
+func set_skeleton(value: Skeleton3D) -> void:
+	skeleton = value
+	rest_bone_rotations.clear()
+	left_thigh_bone = _find_bone_index(["thigh", "upperleg"], "left")
+	right_thigh_bone = _find_bone_index(["thigh", "upperleg"], "right")
+	left_upper_arm_bone = _find_bone_index(["upperarm", "arm"], "left")
+	right_upper_arm_bone = _find_bone_index(["upperarm", "arm"], "right")
+	spine_bone = _find_bone_index(["spine", "chest"], "")
+	for index in range(skeleton.get_bone_count()):
+		rest_bone_rotations[index] = skeleton.get_bone_pose_rotation(index)
+
+func _find_bone_index(terms: Array[String], side: String) -> int:
+	if skeleton == null:
+		return -1
+	for index in range(skeleton.get_bone_count()):
+		var bone_name := skeleton.get_bone_name(index).to_lower()
+		if side == "left" and not (bone_name.contains("_l") or bone_name.ends_with(".l") or bone_name.contains("left")):
+			continue
+		if side == "right" and not (bone_name.contains("_r") or bone_name.ends_with(".r") or bone_name.contains("right")):
+			continue
+		for term in terms:
+			if bone_name.contains(term):
+				return index
+	return -1
+
+func _apply_bone_rotation(index: int, angle: float, axis: Vector3 = Vector3.RIGHT) -> void:
+	if skeleton == null or index < 0 or not rest_bone_rotations.has(index):
+		return
+	var rest: Quaternion = rest_bone_rotations[index]
+	skeleton.set_bone_pose_rotation(index, rest * Quaternion(axis, angle))
+
+func _update_rig_animation(delta: float, moving: bool, speed: float) -> void:
+	if skeleton == null:
+		return
+	for key in rest_bone_rotations.keys():
+		var index := int(key)
+		skeleton.set_bone_pose_rotation(index, rest_bone_rotations[index])
+	if moving and speed > 0.12:
+		gait_clock += delta * (5.2 + speed * 1.7)
+		var stride := sin(gait_clock) * minf(0.72, speed / maxf(walk_speed, 0.1))
+		_apply_bone_rotation(left_thigh_bone, stride * 0.68)
+		_apply_bone_rotation(right_thigh_bone, -stride * 0.68)
+		_apply_bone_rotation(left_upper_arm_bone, -stride * 0.42)
+		_apply_bone_rotation(right_upper_arm_bone, stride * 0.42)
+		_apply_bone_rotation(spine_bone, -absf(stride) * 0.045, Vector3.FORWARD)
+	else:
+		gait_clock += delta
+		_apply_bone_rotation(spine_bone, sin(gait_clock * 1.45) * 0.018, Vector3.FORWARD)
 
 func _find_animation(terms: Array[String]) -> StringName:
 	if animation_player == null:
@@ -127,6 +183,9 @@ func _update_animation(delta: float, moving: bool, speed: float) -> void:
 	if visual_root == null:
 		return
 	if _play_model_animation(moving and speed > 0.12):
+		return
+	if skeleton:
+		_update_rig_animation(delta, moving, speed)
 		return
 	if moving and speed > 0.12:
 		gait_clock += delta * (5.2 + speed * 1.7)
