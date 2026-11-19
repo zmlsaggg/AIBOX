@@ -9,7 +9,9 @@ const HOST = "127.0.0.1";
 const PORT = Number(process.env.AIBOX_BRIDGE_PORT || 3210);
 const TOKEN = process.env.AIBOX_BRIDGE_TOKEN || randomBytes(18).toString("hex");
 const PROFILE = path.resolve(process.env.AIBOX_BROWSER_PROFILE || path.join(os.homedir(), ".aibox", "browser-profile"));
-// Electron opens the game from file://, which sends the opaque Origin "null".\n// Requests still require the random Bearer pairing token below.\nconst ALLOWED_ORIGINS = new Set(["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173", "null"]);
+// Electron opens the game from file://, which sends the opaque Origin "null".
+// Requests still require the random Bearer pairing token below.
+const ALLOWED_ORIGINS = new Set(["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173", "null"]);
 const PROVIDERS = {
   chatgpt: { label: "ChatGPT", url: "https://chatgpt.com/" },
   deepseek: { label: "DeepSeek", url: "https://chat.deepseek.com/" },
