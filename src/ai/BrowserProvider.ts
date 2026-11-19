@@ -3,7 +3,7 @@ import type { AIProvider } from "./contracts";
 export type BrowserProviderId = "chatgpt" | "deepseek" | "qwen" | "gemini" | "claude";
 
 export class BrowserProvider implements AIProvider {
-  readonly name = "BROWSER SESSION";
+  readonly name = "CHROME SESSION";
   private provider: BrowserProviderId = "chatgpt";
 
   configure(provider: BrowserProviderId): void {
