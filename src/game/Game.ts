@@ -314,17 +314,21 @@ export class Game {
       case "use_item": {
         const heldItem = this.pickups.getHeldItemId(this.prisoner);
         const position = this.prisoner.position;
-        if (heldItem !== "keycard") {
-          outcome = { success: false, summary: `Cannot use item: currently holding ${heldItem ?? "nothing"}; a keycard is required for checkpoint locks.` };
-        } else if (this.layout.unlockDoorNear(action.target, position.x, position.z, 2.4)) {
-          outcome = { success: true, summary: `Keycard successfully unlocked ${action.target}. The door must still be opened separately.` };
+        if (heldItem === "keycard") {
+          if (this.layout.unlockDoorNear(action.target, position.x, position.z, 2.4)) {
+            outcome = { success: true, summary: `Keycard successfully unlocked ${action.target}. The door must still be opened separately.` };
+          } else {
+            outcome = { success: false, summary: `Keycard use failed: ${action.target} is already unlocked, missing, or too far away.` };
+          }
+        } else if (heldItem === "wrench" && this.layout.forceOpenDoorNear(action.target, position.x, position.z, 2.4)) {
+          const consumed = this.pickups.consumeHeld(this.prisoner);
+          outcome = { success: true, summary: `Forced ${action.target} open with the wrench. The tool (${consumed ?? "wrench"}) was consumed.` };
         } else {
-          const door = this.layout.getDoorStates().find((entry) => entry.id === action.target);
           outcome = {
             success: false,
-            summary: door
-              ? `Keycard use failed: ${door.id} is already unlocked or you are too far away.`
-              : `Keycard use failed: no lock named ${action.target} exists.`,
+            summary: heldItem === "wrench"
+              ? `Wrench cannot force ${action.target}: it is not a nearby locked checkpoint.`
+              : `Cannot use item: holding ${heldItem ?? "nothing"}. A keycard or wrench is required for checkpoint locks.`,
           };
         }
         this.callbacks.onEvent(outcome.summary, outcome.success ? "success" : "warning");
