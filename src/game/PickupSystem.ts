@@ -23,7 +23,7 @@ export class PickupSystem {
   private readonly heldItems = new Map<Character, PickupItem>();
 
   constructor(private readonly world: PhysicsWorld, private readonly scene: THREE.Scene) {
-    this.addKeycard(-3.2, 0.035, 6.15);
+    this.addKeycard(-3.2, 0.035, -3.8);
     this.addWrench(3.5, 0.07, -7.1);
     this.addCanteen(-9.8, 0.14, -4.7);
   }
