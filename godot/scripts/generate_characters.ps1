@@ -40,7 +40,7 @@ $tsx = Join-Path $generator "node_modules/.bin/tsx.cmd"
 if ($LASTEXITCODE -ne 0) { throw "Guard character export failed." }
 & $tsx (Join-Path $root "tools/aibox-characters/export-character.ts") --generator $generator --params (Join-Path $root "tools/aibox-characters/prisoner.params.json") --out (Join-Path $destination "prisoner.glb")
 if ($LASTEXITCODE -ne 0) { throw "Prisoner character export failed." }
-& node (Join-Path $scriptDir "verify-character-glb.mjs") (Join-Path $destination "guard.glb")
+& node (Join-Path $root "tools/aibox-characters/verify-character-glb.mjs") (Join-Path $destination "guard.glb")
 if ($LASTEXITCODE -ne 0) { throw "Guard GLB validation failed." }
-& node (Join-Path $scriptDir "verify-character-glb.mjs") (Join-Path $destination "prisoner.glb")
+& node (Join-Path $root "tools/aibox-characters/verify-character-glb.mjs") (Join-Path $destination "prisoner.glb")
 if ($LASTEXITCODE -ne 0) { throw "Prisoner GLB validation failed." }
