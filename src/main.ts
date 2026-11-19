@@ -190,15 +190,21 @@ let browserConnected = false;
 let selectedDifficulty: PrisonDifficulty = "standard";
 let eventNumber = 0;
 
-const introOverlay = $("#intro-overlay");
-const startOverlay = $("#start-overlay");
+const introOverlay = document.querySelector<HTMLDivElement>("#intro-overlay");
+const startOverlay = document.querySelector<HTMLDivElement>("#start-overlay");
+const introEnter = document.querySelector<HTMLButtonElement>("#intro-enter");
+const bridgeHelpToggle = document.querySelector<HTMLButtonElement>("#bridge-help-toggle");
+const bridgeHelpSteps = document.querySelector<HTMLDivElement>("#bridge-help-steps");
+if (!introOverlay || !startOverlay || !introEnter || !bridgeHelpToggle || !bridgeHelpSteps) {
+  throw new Error("Missing startup or browser-bridge setup controls");
+}
 
 function enterFacility(): void {
   introOverlay.classList.add("hidden");
   startOverlay.classList.remove("hidden");
 }
 
-$("#intro-enter").addEventListener("click", enterFacility);
+introEnter.addEventListener("click", enterFacility);
 window.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || introOverlay.classList.contains("hidden")) return;
   const target = event.target;
@@ -207,13 +213,11 @@ window.addEventListener("keydown", (event) => {
   enterFacility();
 });
 
-$("#bridge-help-toggle").addEventListener("click", () => {
-  const button = $("#bridge-help-toggle");
-  const steps = $("#bridge-help-steps");
-  const expanded = button.getAttribute("aria-expanded") === "true";
-  button.setAttribute("aria-expanded", String(!expanded));
-  steps.hidden = expanded;
-  button.textContent = expanded ? "КАК ПОЛУЧИТЬ PAIRING TOKEN?" : "СКРЫТЬ ИНСТРУКЦИЮ";
+bridgeHelpToggle.addEventListener("click", () => {
+  const expanded = bridgeHelpToggle.getAttribute("aria-expanded") === "true";
+  bridgeHelpToggle.setAttribute("aria-expanded", String(!expanded));
+  bridgeHelpSteps.hidden = expanded;
+  bridgeHelpToggle.textContent = expanded ? "КАК ПОЛУЧИТЬ PAIRING TOKEN?" : "СКРЫТЬ ИНСТРУКЦИЮ";
 });
 
 const $ = <T extends HTMLElement>(selector: string): T => {
