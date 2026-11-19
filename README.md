@@ -2,9 +2,11 @@
 
 An asymmetrical prison sandbox: the human player is the warden, while an AI-controlled prisoner gets one prompt per turn to attempt an escape.
 
-> Early prototype. The current browser build uses a local demo AI provider; it does not yet connect to ChatGPT, DeepSeek, Qwen or Arena.
+> Early prototype. The game includes a local demo provider and an optional local Browser Bridge for ChatGPT, DeepSeek, Qwen, Gemini and Claude. Browser providers require a user-authorized Chromium session.
 
 ## Current foundation
+
+The current playable prototype is written in TypeScript and uses Three.js for rendering, Rapier for physics, Vite for the renderer, Electron for Windows desktop packaging and Capacitor for the Android wrapper. This is a custom web-based runtime, not a full visual game-engine editor. The target engine decision is documented in [docs/ENGINE_DECISION.md](docs/ENGINE_DECISION.md): Godot 4.7.2 Stable with GDScript. The existing prototype remains intact while the native Godot version is ported system by system.
 
 - Top-down 3D prison scene with an orthographic camera.
 - Smooth placeholder 3D guard/prisoner characters.
@@ -86,21 +88,26 @@ Not yet selected. Check asset licenses before adding external models, textures o
 
 The game can use a local Playwright companion instead of the demo provider.
 
-1. Start the Vite app with `npm install && npm run dev`.
-2. In a second terminal run:
+1. Install Node.js 22.12 or newer.
+2. Clone the repository if you do not already have its source locally:
 
-   ```bash
-   cd bridge
-   npm install
-   npx playwright install chromium
-   npm start
+   ```powershell
+   git clone https://github.com/zmlsaggg/AIBOX.git
    ```
 
-3. Copy the one-time pairing token printed by the bridge into **LOCAL PAIRING TOKEN** in the AI panel.
-4. Select ChatGPT and click **CONNECT BROWSER SESSION**. A separate visible Chromium profile opens; sign in manually. Then start the shift and run AI turns.
-5. Switch to DeepSeek, Qwen, Gemini or Claude in the same selector when you want to use another website.
+3. In PowerShell run the one-command launcher:
 
-The bridge uses a dedicated persistent browser profile under `~/.aibox/browser-profile`, not your everyday browser profile. The first version supports ChatGPT, DeepSeek, Qwen Chat, Gemini and Claude. Website UI selectors can change and may need updates.
+   ```powershell
+   cd AIBOX
+   powershell -ExecutionPolicy Bypass -File .\bridge\Start-Bridge.ps1
+   ```
+
+   The script installs the bridge packages and Playwright Chromium if needed, then starts the local service.
+4. Copy the value printed after **Pairing token:** into **LOCAL PAIRING TOKEN** in AIBOX. Keep the PowerShell window open while you play.
+5. Select a provider and click **CONNECT BROWSER SESSION**. Chromium opens; sign in to that provider manually. Return to AIBOX and click **RUN AI TURN**.
+6. To change provider, select another website and click **CONNECT BROWSER SESSION** again.
+
+The bridge uses a dedicated persistent browser profile under `~/.aibox/browser-profile`, not your everyday browser profile. The bridge accepts the Electron app's opaque `file://` origin only when requests include the random pairing token. The first version supports ChatGPT, DeepSeek, Qwen Chat, Gemini and Claude. Website UI selectors can change and may need updates.
 
 **Important:** browser automation does not remove provider quotas, subscription limits, safety rules or CAPTCHAs. A refusal is not treated as a technical failure and is not automatically routed to another model. The player chooses providers manually. Do not use this bridge to automate account creation or evade provider restrictions.
 

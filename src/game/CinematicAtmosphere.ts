@@ -7,6 +7,11 @@ import * as THREE from "three";
 export class CinematicAtmosphere {
   private readonly stainMaterial: THREE.MeshBasicMaterial;
   private readonly scuffMaterial: THREE.MeshBasicMaterial;
+  private readonly dustGeometry = new THREE.BufferGeometry();
+  private readonly dustPositions = new Float32Array(36 * 3);
+  private readonly dustSpeeds = new Float32Array(36);
+  private dustPoints!: THREE.Points;
+  private dustTime = 0;
 
   constructor(private readonly scene: THREE.Scene) {
     const stainTexture = this.radialTexture("#182123", "#18212300");
@@ -31,6 +36,46 @@ export class CinematicAtmosphere {
     this.addFloorWear();
     this.addLightPools();
     this.addWallWear();
+    this.addDust();
+  }
+
+  update(delta: number): void {
+    this.dustTime += delta;
+    for (let index = 0; index < this.dustSpeeds.length; index += 1) {
+      const offset = index * 3;
+      this.dustPositions[offset] += Math.sin(this.dustTime * 0.35 + index) * delta * 0.018;
+      this.dustPositions[offset + 1] += this.dustSpeeds[index] * delta;
+      this.dustPositions[offset + 2] += Math.cos(this.dustTime * 0.28 + index * 0.7) * delta * 0.012;
+      if (this.dustPositions[offset + 1] > 2.6) {
+        this.dustPositions[offset + 1] = 0.32;
+        this.dustPositions[offset] = ((index * 7.13) % 22) - 11;
+        this.dustPositions[offset + 2] = ((index * 4.97) % 16) - 8;
+      }
+    }
+    const positions = this.dustGeometry.getAttribute("position") as THREE.BufferAttribute;
+    positions.needsUpdate = true;
+  }
+
+  private addDust(): void {
+    for (let index = 0; index < this.dustSpeeds.length; index += 1) {
+      const offset = index * 3;
+      this.dustPositions[offset] = ((index * 7.13) % 22) - 11;
+      this.dustPositions[offset + 1] = 0.32 + (index % 8) * 0.28;
+      this.dustPositions[offset + 2] = ((index * 4.97) % 16) - 8;
+      this.dustSpeeds[index] = 0.045 + (index % 5) * 0.012;
+    }
+    this.dustGeometry.setAttribute("position", new THREE.BufferAttribute(this.dustPositions, 3));
+    const material = new THREE.PointsMaterial({
+      color: 0xd5c6a5,
+      size: 0.045,
+      transparent: true,
+      opacity: 0.24,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    this.dustPoints = new THREE.Points(this.dustGeometry, material);
+    this.dustPoints.renderOrder = 2;
+    this.scene.add(this.dustPoints);
   }
 
   private radialTexture(inner: string, outer: string): THREE.CanvasTexture {

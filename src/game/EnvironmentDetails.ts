@@ -6,6 +6,7 @@ export class EnvironmentDetails {
   private readonly darkSteel = new THREE.MeshStandardMaterial({ color: 0x202a2c, metalness: 0.62, roughness: 0.55 });
   private readonly glass = new THREE.MeshStandardMaterial({ color: 0x71878a, roughness: 0.24, metalness: 0.08, transparent: true, opacity: 0.32 });
   private readonly concrete = new THREE.MeshStandardMaterial({ color: 0x455256, roughness: 0.94 });
+  private readonly rotatingFans: THREE.Group[] = [];
 
   constructor(private readonly scene: THREE.Scene) {
     this.addNorthWindow(-8.7, 1.72, 2.25);
@@ -19,6 +20,10 @@ export class EnvironmentDetails {
     this.addCableTray(-11.7, 2.42, -1.2, 7.5);
     this.addRadiator(-11.68, 0.55, 0.9);
     this.addLocker(10.75, 0.92, 6.7);
+  }
+
+  update(delta: number): void {
+    for (const fan of this.rotatingFans) fan.rotation.z += delta * 2.1;
   }
 
   private box(x: number, y: number, z: number, w: number, h: number, d: number, material: THREE.Material, parent?: THREE.Object3D): THREE.Mesh {
@@ -64,7 +69,20 @@ export class EnvironmentDetails {
     this.box(0, 0, 0.05, 0.84, 0.48, 0.025, this.concrete, root);
     for (let i = 0; i < 7; i += 1) this.box(0, -0.2 + i * 0.066, 0.085, 0.82, 0.025, 0.035, this.steel, root);
     for (const side of [-1, 1]) this.box(side * 0.43, 0, 0.09, 0.045, 0.58, 0.045, this.steel, root);
-    this.box(0, 0, 0.12, 0.12, 0.12, 0.06, this.darkSteel, root);
+    const rotor = new THREE.Group();
+    rotor.position.set(0, 0, 0.17);
+    root.add(rotor);
+    for (let bladeIndex = 0; bladeIndex < 4; bladeIndex += 1) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.22, 0.025), this.steel);
+      blade.position.y = 0.13;
+      blade.rotation.z = (bladeIndex * Math.PI) / 2;
+      blade.castShadow = true;
+      rotor.add(blade);
+    }
+    const hub = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), this.darkSteel);
+    hub.castShadow = true;
+    rotor.add(hub);
+    this.rotatingFans.push(rotor);
   }
 
   private addPipeX(x: number, y: number, z: number, length: number): void {

@@ -9,7 +9,9 @@ const HOST = "127.0.0.1";
 const PORT = Number(process.env.AIBOX_BRIDGE_PORT || 3210);
 const TOKEN = process.env.AIBOX_BRIDGE_TOKEN || randomBytes(18).toString("hex");
 const PROFILE = path.resolve(process.env.AIBOX_BROWSER_PROFILE || path.join(os.homedir(), ".aibox", "browser-profile"));
-const ALLOWED_ORIGINS = new Set(["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173"]);
+// Electron opens the game from file://, which sends the opaque Origin "null".
+// Requests still require the random Bearer pairing token below.
+const ALLOWED_ORIGINS = new Set(["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173", "null"]);
 const PROVIDERS = {
   chatgpt: { label: "ChatGPT", url: "https://chatgpt.com/" },
   deepseek: { label: "DeepSeek", url: "https://chat.deepseek.com/" },
@@ -128,7 +130,18 @@ const server = createServer(async (req, res) => {
   const origin = req.headers.origin;
   if (req.method === "OPTIONS") {
     if (!ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin not allowed" });
-    res.writeHead(204, { "access-control-allow-origin": origin, "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type,authorization", "access-control-max-age": "600", vary: "Origin" });
+    const headers = {
+      "access-control-allow-origin": origin,
+      "access-control-allow-methods": "GET,POST,OPTIONS",
+      "access-control-allow-headers": "content-type,authorization",
+      "access-control-max-age": "600",
+      vary: "Origin"
+    };
+    // Chromium may send a Private Network Access preflight for file:// -> localhost.
+    if (req.headers["access-control-request-private-network"] === "true") {
+      headers["access-control-allow-private-network"] = "true";
+    }
+    res.writeHead(204, headers);
     return res.end();
   }
   if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { error: "Origin not allowed" });
