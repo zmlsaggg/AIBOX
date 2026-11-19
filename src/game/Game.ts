@@ -482,6 +482,7 @@ export class Game {
         z: position.z,
         status: "в камере",
         heldItem: this.pickups.getHeldItemId(this.prisoner),
+        moving: this.prisoner.isMovingToTarget,
       },
       guard: { x: guardPosition.x, z: guardPosition.z },
       visibleObjects: [
