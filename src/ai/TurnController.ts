@@ -103,7 +103,7 @@ export class TurnController {
     const previous = this.history[this.history.length - 1];
     if (previous?.action.type === "move" && previous.success && !snapshot.prisoner.moving) {
       const remaining = Math.hypot(previous.action.x - snapshot.prisoner.x, previous.action.z - snapshot.prisoner.z);
-      if (remaining > 1.5) {
+      if (remaining > 1.75) {
         previous.success = false;
         previous.outcome = `Movement stalled: target was (${previous.action.x.toFixed(1)}, ${previous.action.z.toFixed(1)}), current position is (${snapshot.prisoner.x.toFixed(1)}, ${snapshot.prisoner.z.toFixed(1)}). Re-plan around walls or closed doors.`;
       } else {
