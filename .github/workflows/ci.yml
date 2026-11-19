@@ -43,6 +43,10 @@ jobs:
           include-templates: false
       - name: Verify Godot version
         run: godot --version
+      - name: Download pinned CC0 character models
+        run: bash godot/scripts/download_assets.sh
+      - name: Verify character assets
+        run: test -s godot/assets/characters/guard_swat.glb && test -s godot/assets/characters/prisoner_punk.glb
       - name: Import and parse native project
         run: godot --headless --path godot --editor --quit
       - name: Run native project smoke test
