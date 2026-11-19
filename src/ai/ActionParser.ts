@@ -32,9 +32,11 @@ export function parsePrisonerAction(raw: string): PrisonerAction {
 
   switch (data.type) {
     case "move": {
-      const x = Number(data.x);
-      const z = Number(data.z);
-      if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error("Move coordinates must be numbers.");
+      const x = data.x;
+      const z = data.z;
+      if (typeof x !== "number" || typeof z !== "number" || !Number.isFinite(x) || !Number.isFinite(z)) {
+        throw new Error("Move coordinates must be finite JSON numbers.");
+      }
       return {
         type: "move",
         x: Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, x)),
