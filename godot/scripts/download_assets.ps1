@@ -7,12 +7,14 @@ New-Item -ItemType Directory -Force -Path $target | Out-Null
 $assets = @(
     @{
         Name = "guard_dog_walker.glb"
+        DownloadName = "guard_dog_walker.source.glb"
         Url = "https://tevy.dev/models/dog-walker/v1/lod0.glb"
         Bytes = 1574900
         Sha256 = "404a67373dcd4200035c04fa9a6fd53b7156ef35397acef7ef9bc2db1d0ed1d5"
     },
     @{
         Name = "prisoner_casual_walker.glb"
+        DownloadName = "prisoner_casual_walker.source.glb"
         Url = "https://tevy.dev/models/casual-walker/v1/lod0.glb"
         Bytes = 1789516
         Sha256 = "60f7fec2c35fc46b848d99da4c67f43213eea6d8464aa05ac683ffacf2a576d7"
@@ -20,7 +22,7 @@ $assets = @(
 )
 
 foreach ($asset in $assets) {
-    $destination = Join-Path $target $asset.Name
+    $destination = Join-Path $target $asset.DownloadName
     $temporary = "$destination.download"
     if ((Test-Path $destination) -and (Get-Item $destination).Length -eq $asset.Bytes) {
         $existingHash = (Get-FileHash -Algorithm SHA256 $destination).Hash.ToLowerInvariant()
@@ -49,3 +51,12 @@ foreach ($asset in $assets) {
     Move-Item -Force $temporary $destination
 }
 Write-Host "AIBOX CC0 humanoid characters are ready." -ForegroundColor Green
+
+
+$repositoryRoot = Split-Path -Parent $root
+$converter = Join-Path $repositoryRoot "tools/prepare-godot-assets.mjs"
+Write-Host "Converting compressed source GLBs into Godot-compatible GLB files..." -ForegroundColor Cyan
+& node $converter $target
+if ($LASTEXITCODE -ne 0) {
+    throw "Character model conversion failed."
+}
