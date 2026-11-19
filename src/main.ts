@@ -1,5 +1,5 @@
 import { Game, type GameStats } from "./game/Game";
-import type { PrisonDifficulty } from "./ai/contracts";
+import type { PrisonDifficulty, PrisonerAction, PrisonerDecision, TurnMemoryEntry } from "./ai/contracts";
 import { BrowserProvider, type BrowserProviderId } from "./ai/BrowserProvider";
 import { DemoProvider } from "./ai/DemoProvider";
 import "./style.css";
@@ -94,6 +94,26 @@ app.innerHTML = `
               <button class="primary-button" data-action="next-turn">RUN AI TURN <span>↗</span></button>
               <button class="interrupt-button" id="interrupt-button" data-action="interrupt" disabled title="Cancel the current prompt">ϟ <span>DELETE</span><b id="charge-count">1</b></button>
             </div>
+            <details class="ai-cognition" open>
+              <summary><span>AI COGNITION</span><span class="cognition-live">MEMORY ONLINE</span></summary>
+              <div class="cognition-block">
+                <small>CURRENT INTENT</small>
+                <p id="ai-intent">Waiting for the first decision.</p>
+                <div class="cognition-meta"><span>CONFIDENCE</span><b id="ai-confidence">—</b></div>
+              </div>
+              <div class="cognition-block">
+                <small>ALTERNATIVE ACTIONS · NOT EXECUTED</small>
+                <ol id="ai-alternatives"><li>Model alternatives will appear after its first turn.</li></ol>
+              </div>
+              <div class="cognition-block">
+                <small>PERSISTENT STRATEGY MEMORY</small>
+                <p id="ai-memory">The prisoner has not learned anything yet.</p>
+              </div>
+              <div class="cognition-block">
+                <small>RECENT DECISIONS</small>
+                <ol id="ai-history"><li>No completed turns.</li></ol>
+              </div>
+            </details>
             <div class="turn-note">ONE PROMPT = ONE TURN <span>·</span> OUTPUT IS VALIDATED</div>
           </div>
         </section>
@@ -172,6 +192,50 @@ function updateStats(stats: GameStats): void {
   }
 }
 
+function describeAIAction(action: PrisonerAction): string {
+  switch (action.type) {
+    case "move": return `MOVE → ${action.x.toFixed(1)}, ${action.z.toFixed(1)} · ${action.pace}`;
+    case "inspect": return `INSPECT → ${action.target}`;
+    case "interact": return `INTERACT → ${action.target}`;
+    case "use_item": return `USE ITEM → ${action.target}`;
+    case "throw": return `THROW → ${action.x.toFixed(1)}, ${action.z.toFixed(1)}`;
+    case "speak": return `SPEAK → ${action.message}`;
+    case "wait": return "WAIT";
+  }
+}
+
+function renderDecision(decision: PrisonerDecision, history: TurnMemoryEntry[], memorySummary: string): void {
+  $("#ai-intent").textContent = decision.intent;
+  $("#ai-confidence").textContent = `${Math.round(decision.confidence * 100)}%`;
+  const alternatives = $("#ai-alternatives");
+  alternatives.replaceChildren();
+  if (!decision.alternatives.length) {
+    const empty = document.createElement("li");
+    empty.textContent = "No valid alternatives returned.";
+    alternatives.append(empty);
+  } else {
+    decision.alternatives.forEach((action) => {
+      const item = document.createElement("li");
+      item.textContent = describeAIAction(action);
+      alternatives.append(item);
+    });
+  }
+  $("#ai-memory").textContent = memorySummary;
+  const historyList = $("#ai-history");
+  historyList.replaceChildren();
+  history.slice(-5).reverse().forEach((entry) => {
+    const item = document.createElement("li");
+    item.className = entry.success ? "memory-success" : "memory-failure";
+    item.textContent = `#${entry.turn} · ${describeAIAction(entry.action)} — ${entry.outcome}`;
+    historyList.append(item);
+  });
+  if (!history.length) {
+    const item = document.createElement("li");
+    item.textContent = "No completed turns.";
+    historyList.append(item);
+  }
+}
+
 function setTurnState(state: string, detail?: string): void {
   const stateLabel = $("#ai-state");
   stateLabel.textContent = state.toUpperCase();
@@ -217,6 +281,7 @@ $("#start-button").addEventListener("click", async () => {
       onEvent: addEvent,
       onTurnState: setTurnState,
       onStats: updateStats,
+      onDecision: renderDecision,
     }, browserConnected ? browserProvider : new DemoProvider());
     $("#start-overlay").classList.add("hidden");
     $("#facility-status").textContent = "ACTIVE";
