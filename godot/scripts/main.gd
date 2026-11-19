@@ -140,7 +140,8 @@ func _create_world_environment() -> void:
 	environment.adjustment_brightness = 1.08
 	environment.adjustment_contrast = 1.12
 	environment.adjustment_saturation = 1.12
-	environment.ssao_enabled = true
+	var desktop_forward_plus := not OS.has_feature("mobile")
+	environment.ssao_enabled = desktop_forward_plus
 	environment.ssao_radius = 0.72
 	environment.ssao_intensity = 1.05
 	environment.ssao_power = 1.25
@@ -149,24 +150,24 @@ func _create_world_environment() -> void:
 	environment.ssao_sharpness = 0.95
 	environment.ssao_light_affect = 0.12
 	# Real-time bounce lighting for the enclosed desktop prison layout.
-	# Mobile uses the dedicated renderer and falls back to direct lights + SSIL.
-	environment.sdfgi_enabled = not OS.has_feature("mobile")
+	# The Android Mobile renderer uses direct lighting and the lighter environment stack.
+	environment.sdfgi_enabled = desktop_forward_plus
 	environment.sdfgi_cascades = 2
 	environment.sdfgi_use_occlusion = true
 	environment.sdfgi_read_sky_light = false
 	environment.sdfgi_energy = 0.82
 	environment.sdfgi_bounce_feedback = 0.42
-	environment.ssil_enabled = true
+	environment.ssil_enabled = desktop_forward_plus
 	environment.ssil_radius = 4.5
 	environment.ssil_intensity = 0.55
 	environment.ssil_sharpness = 0.92
 	environment.ssil_normal_rejection = 0.8
-	environment.ssr_enabled = true
+	environment.ssr_enabled = desktop_forward_plus
 	environment.ssr_max_steps = 64
 	environment.ssr_fade_in = 0.15
 	environment.ssr_fade_out = 2.0
 	environment.ssr_depth_tolerance = 0.18
-	environment.volumetric_fog_enabled = true
+	environment.volumetric_fog_enabled = desktop_forward_plus
 	environment.volumetric_fog_density = 0.012
 	environment.volumetric_fog_albedo = Color("#9caaa7")
 	environment.volumetric_fog_length = 28.0
