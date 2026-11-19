@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
+import type { MovementPace } from "../ai/contracts";
 
 type PhysicsWorld = InstanceType<typeof RAPIER.World>;
 type Body = ReturnType<PhysicsWorld["createRigidBody"]>;
@@ -27,6 +28,7 @@ export class Character {
   private readonly moveSpeed: number;
   private readonly acceleration: number;
   private readonly turnSpeed: number;
+  private targetSpeedFactor = 0.82;
   private idleTime = 0;
 
   constructor(
@@ -165,8 +167,9 @@ export class Character {
     if (this.movementInput.lengthSq() > 1) this.movementInput.normalize();
   }
 
-  moveTo(x: number, z: number): void {
+  moveTo(x: number, z: number, pace: MovementPace = "normal"): void {
     if (this.pickupAnimation) return;
+    this.targetSpeedFactor = pace === "cautious" ? 0.46 : pace === "fast" ? 1 : 0.78;
     this.target = new THREE.Vector3(x, 0.51, z);
     this.targetLifetime = 0;
     this.movementInput.set(0, 0);
@@ -192,8 +195,9 @@ export class Character {
         this.targetDirection.set(0, 0);
       } else {
         this.targetDirection.set(dx / distance, dz / distance);
-        const stoppingSpeed = Math.min(this.moveSpeed, Math.sqrt(Math.max(0, distance) * 2 * this.acceleration));
-        this.targetDirection.multiplyScalar(stoppingSpeed / this.moveSpeed);
+        const targetSpeed = this.moveSpeed * this.targetSpeedFactor;
+        const stoppingSpeed = Math.min(targetSpeed, Math.sqrt(Math.max(0, distance) * 2 * this.acceleration));
+        this.targetDirection.multiplyScalar(stoppingSpeed / targetSpeed);
       }
     } else if (autonomous) {
       this.targetDirection.set(0, 0);
@@ -201,8 +205,8 @@ export class Character {
       this.targetDirection.copy(this.movementInput);
     }
 
-    const desiredX = this.pickupAnimation ? 0 : this.targetDirection.x * this.moveSpeed;
-    const desiredZ = this.pickupAnimation ? 0 : this.targetDirection.y * this.moveSpeed;
+    const desiredX = this.pickupAnimation ? 0 : this.targetDirection.x * (autonomous ? this.moveSpeed * this.targetSpeedFactor : this.moveSpeed);
+    const desiredZ = this.pickupAnimation ? 0 : this.targetDirection.y * (autonomous ? this.moveSpeed * this.targetSpeedFactor : this.moveSpeed);
     const currentX = velocity.x;
     const currentZ = velocity.z;
     const differenceX = desiredX - currentX;
