@@ -6,7 +6,7 @@ An asymmetrical prison sandbox: the human player is the warden, while an AI-cont
 
 ## Current foundation
 
-The current playable prototype is written in TypeScript and uses Three.js for rendering, Rapier for physics, Vite for the renderer, Electron for Windows desktop packaging and Capacitor for the Android wrapper. This is a custom web-based runtime, not a full visual game-engine editor. The target engine decision is documented in [docs/ENGINE_DECISION.md](docs/ENGINE_DECISION.md): Godot 4.7.2 Stable with GDScript. The existing prototype remains intact while the native Godot version is ported system by system.
+The original prototype is written in TypeScript and uses Three.js, Rapier, Vite, Electron and Capacitor. It remains available as a reference build, but it is no longer the long-term game architecture. A native Godot 4.7.2 project now lives in [godot/](godot/), using GDScript, CharacterBody3D, AnimatableBody3D and RigidBody3D. The port is underway; release builds will switch to Godot only after gameplay parity is reached. See [docs/ENGINE_DECISION.md](docs/ENGINE_DECISION.md).
 
 - Top-down 3D prison scene with an orthographic camera.
 - Smooth placeholder 3D guard/prisoner characters.
@@ -66,51 +66,38 @@ src/
 
 ### Planned browser provider layer
 
-Real no-API-key website adapters should live behind the `AIProvider` interface. A separate local Playwright bridge can attach to a user-authorized browser session and return the final assistant message to the game over a localhost-only channel. Keep that bridge separate from the simulation.
+The Windows EXE opens provider websites in dedicated Electron windows. No pairing token, separately installed Node.js, Git clone, PowerShell or Playwright browser installation is required for the player. Electron already contains its own Node runtime; provider cookies and login sessions are saved in app-specific persistent partitions on that PC. The renderer communicates with the main process through a narrow context-isolated preload API. Website UI selectors can change and provider quotas/terms still apply.
 
 The turn controller already has the important cancellation rule: interrupting a prompt invalidates its generation ID. Even if a browser page returns a late response after cancellation, that response is discarded and cannot mutate the game world.
 
-### Planned next milestones
+### Native Godot migration
 
-1. Replace placeholder humanoids with licensed/open-source rigged GLB characters and add walk cycles.
-2. Add real patrol navigation, guard AI, vision cones, cameras, sensors and alarm validation.
-3. Implement distinct prison layouts and difficulty modifiers (not just different labels/budgets).
-4. Add the local Playwright bridge and provider adapters, with explicit user login and per-site selectors.
-5. Add a finite item catalogue for in-world object creation; never execute arbitrary code emitted by an AI.
-6. Persist runs, events, budgets and escape summaries.
+The first native vertical slice is in `godot/`:
+- a real 3D prison block with collidable concrete partitions and furniture;
+- a CharacterBody3D guard with acceleration, braking, sprinting, collision and procedural gait/idle motion;
+- a second physical prisoner body;
+- AnimatableBody3D cell and perimeter doors with collision that follows the door animation;
+- RigidBody3D keycard, wrench and canteen pickups that can be carried and thrown;
+- sweeping CCTV cameras, lighting, a full-screen intro and a readable HUD;
+- an allow-listed native AI action validator for movement and waiting.
+
+This is an initial port, not feature parity yet. The next work is navigation/pathfinding, patrols and vision, all door and item interactions, inventory, difficulty rules, camera placement, saved runs, then the native AI provider window/session integration. The TypeScript prototype remains the reference until these systems are ported and tested.
 
 ## License
 
 Not yet selected. Check asset licenses before adding external models, textures or sounds.
 
 
-## Real browser AI sessions (no API keys)
+## Browser AI connections in the Windows game
 
-The game can use a local Playwright companion instead of the demo provider.
+1. In AIBOX, select ChatGPT, DeepSeek, Qwen, Gemini or Claude.
+2. Click **CONNECT AI**. The selected provider opens in an app-owned window.
+3. Sign in normally. Close or hide that window when you are done; the login stays saved on this PC.
+4. Return to the game and click **RUN AI TURN**.
 
-1. Install Node.js 22.12 or newer.
-2. Clone the repository if you do not already have its source locally:
+There is no pairing token. Players do not install Node.js, clone GitHub repositories, run PowerShell or install a second Chromium browser. The packaged Electron runtime contains what the desktop client needs. The separate legacy `bridge/` scripts are developer experiments and are not used by the Windows installer.
 
-   ```powershell
-   git clone https://github.com/zmlsaggg/AIBOX.git
-   ```
-
-3. In PowerShell run the one-command launcher:
-
-   ```powershell
-   cd AIBOX
-   powershell -ExecutionPolicy Bypass -File .\bridge\Start-Bridge.ps1
-   ```
-
-   The script installs the bridge packages and Playwright Chromium if needed, then starts the local service.
-4. Copy the value printed after **Pairing token:** into **LOCAL PAIRING TOKEN** in AIBOX. Keep the PowerShell window open while you play.
-5. Select a provider and click **CONNECT BROWSER SESSION**. Chromium opens; sign in to that provider manually. Return to AIBOX and click **RUN AI TURN**.
-6. To change provider, select another website and click **CONNECT BROWSER SESSION** again.
-
-The bridge uses a dedicated persistent browser profile under `~/.aibox/browser-profile`, not your everyday browser profile. The bridge accepts the Electron app's opaque `file://` origin only when requests include the random pairing token. The first version supports ChatGPT, DeepSeek, Qwen Chat, Gemini and Claude. Website UI selectors can change and may need updates.
-
-**Important:** browser automation does not remove provider quotas, subscription limits, safety rules or CAPTCHAs. A refusal is not treated as a technical failure and is not automatically routed to another model. The player chooses providers manually. Do not use this bridge to automate account creation or evade provider restrictions.
-
+The first connection still requires the player to sign in to the chosen website. This does not bypass subscriptions, usage limits, CAPTCHAs, site safety rules or provider terms. Browser website automation is subject to UI changes and may need selector maintenance. The browser AI connection currently belongs to the Windows Electron prototype; it is not yet ported into the native Godot runtime.
 
 ## Desktop and Android builds
 
