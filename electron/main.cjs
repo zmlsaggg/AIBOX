@@ -1,208 +1,189 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, clipboard } = require("electron");
+const { execFile, spawnSync } = require("node:child_process");
 const path = require("node:path");
+const fs = require("node:fs/promises");
+const crypto = require("node:crypto");
+const http = require("node:http");
+const { WebSocketServer, WebSocket } = require("ws");
 
+const HOST = "127.0.0.1";
+const PORT = 3210;
+const EXTENSION_ID = "gffladdchbciogclknkmjlklimpdbkhn";
+const EXTENSION_ORIGIN = `chrome-extension://${EXTENSION_ID}`;
 const PROVIDERS = {
-  chatgpt: {
-    label: "ChatGPT",
-    url: "https://chatgpt.com/",
-    composers: ['[data-testid="prompt-textarea"]', 'textarea', '[contenteditable="true"]', '[role="textbox"]'],
-    sendButtons: ['[data-testid="send-button"]', 'button[aria-label*="Send" i]', 'button[data-testid*="send"]'],
-    stopButtons: ['[data-testid="stop-button"]', 'button[aria-label*="Stop" i]', 'button[data-testid*="stop"]'],
-    responses: ['[data-message-author-role="assistant"]'],
-  },
-  deepseek: {
-    label: "DeepSeek",
-    url: "https://chat.deepseek.com/",
-    composers: ['textarea', '[contenteditable="true"]', '[role="textbox"]'],
-    sendButtons: ['button[aria-label*="Send" i]', 'button[class*="send"]'],
-    stopButtons: ['button[aria-label*="Stop" i]', 'button[class*="stop"]'],
-    responses: ['.ds-markdown', '[class*="markdown"]'],
-  },
-  qwen: {
-    label: "Qwen Chat",
-    url: "https://chat.qwen.ai/",
-    composers: ['textarea', '[contenteditable="true"]', '[role="textbox"]'],
-    sendButtons: ['button[aria-label*="Send" i]', 'button[class*="send"]'],
-    stopButtons: ['button[aria-label*="Stop" i]', 'button[class*="stop"]'],
-    responses: ['.markdown-body', '.markdown', '[class*="message-content"]'],
-  },
-  gemini: {
-    label: "Gemini",
-    url: "https://gemini.google.com/app",
-    composers: ['rich-textarea [contenteditable="true"]', 'textarea', '[contenteditable="true"]', '[role="textbox"]'],
-    sendButtons: ['button[aria-label*="Send" i]', 'button[aria-label*="send" i]'],
-    stopButtons: ['button[aria-label*="Stop" i]', 'button[aria-label*="stop" i]'],
-    responses: ['.model-response-text', 'message-content', '[class*="response-content"]'],
-  },
-  claude: {
-    label: "Claude",
-    url: "https://claude.ai/new",
-    composers: ['div[contenteditable="true"]', 'textarea', '[role="textbox"]'],
-    sendButtons: ['button[aria-label*="Send" i]', 'button[data-testid*="send"]'],
-    stopButtons: ['button[aria-label*="Stop" i]', 'button[data-testid*="stop"]'],
-    responses: ['.font-claude-message', '[data-testid="chat-message"]'],
-  },
+  chatgpt: { label: "ChatGPT", url: "https://chatgpt.com/" },
+  deepseek: { label: "DeepSeek", url: "https://chat.deepseek.com/" },
+  qwen: { label: "Qwen Chat", url: "https://chat.qwen.ai/" },
+  gemini: { label: "Gemini", url: "https://gemini.google.com/app" },
+  claude: { label: "Claude", url: "https://claude.ai/new" },
 };
 
 let mainWindow;
-const aiWindows = new Map();
 let selectedProvider = null;
 let generationBusy = false;
 let generationCancelled = false;
-let isQuitting = false;
+let chromeBridgeServer;
+let chromeBridgeWss;
+let chromeSocket = null;
+let chromeBridgeError = null;
+const pendingCommands = new Map();
 
 function isAllowedProvider(id) {
   return Object.prototype.hasOwnProperty.call(PROVIDERS, id);
 }
 
-function isVisible(element) {
-  if (!element) return false;
-  const rect = element.getBoundingClientRect();
-  const style = window.getComputedStyle(element);
-  return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+function sendChromeCommand(type, payload = {}, timeoutMs = 120000) {
+  if (!chromeSocket || chromeSocket.readyState !== WebSocket.OPEN) {
+    return Promise.reject(new Error("Chrome connector is not connected."));
+  }
+  const id = crypto.randomUUID();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pendingCommands.delete(id);
+      reject(new Error("Chrome did not answer the AIBOX request in time. Check the provider tab."));
+    }, timeoutMs);
+    pendingCommands.set(id, { resolve, reject, timer });
+    try {
+      chromeSocket.send(JSON.stringify({ id, type, provider: selectedProvider, ...payload }));
+    } catch (error) {
+      clearTimeout(timer);
+      pendingCommands.delete(id);
+      reject(error);
+    }
+  });
 }
 
-function configureProviderWindow(window, providerId) {
-  window.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      return new URL(url).protocol === "https:" ? { action: "allow" } : { action: "deny" };
-    } catch {
-      return { action: "deny" };
+function settleChromeCommand(message) {
+  if (message.type !== "result" || typeof message.id !== "string") return;
+  const pending = pendingCommands.get(message.id);
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  pendingCommands.delete(message.id);
+  if (message.ok) pending.resolve(message);
+  else pending.reject(new Error(message.error || "Chrome provider request failed."));
+}
+
+function rejectAllChromeCommands(error) {
+  for (const [id, pending] of pendingCommands) {
+    clearTimeout(pending.timer);
+    pending.reject(error);
+    pendingCommands.delete(id);
+  }
+}
+
+function startChromeBridge() {
+  chromeBridgeServer = http.createServer((req, res) => {
+    if (req.url === "/health") {
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify({
+        ok: true,
+        connector: Boolean(chromeSocket && chromeSocket.readyState === WebSocket.OPEN),
+        provider: selectedProvider,
+        busy: generationBusy,
+      }));
     }
+    res.writeHead(404);
+    res.end();
   });
-  window.webContents.on("will-navigate", (event, url) => {
-    try {
-      if (new URL(url).protocol !== "https:") event.preventDefault();
-    } catch {
-      event.preventDefault();
+
+  chromeBridgeWss = new WebSocketServer({ noServer: true, maxPayload: 18000 });
+  chromeBridgeServer.on("upgrade", (request, socket, head) => {
+    const url = new URL(request.url || "/", `http://${HOST}:${PORT}`);
+    if (request.headers.origin !== EXTENSION_ORIGIN || url.pathname !== "/extension") {
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
     }
+    chromeBridgeWss.handleUpgrade(request, socket, head, (webSocket) => {
+      chromeBridgeWss.emit("connection", webSocket, request);
+    });
   });
-  window.on("close", (event) => {
-    if (isQuitting) return;
-    event.preventDefault();
-    window.hide();
+
+  chromeBridgeWss.on("connection", (webSocket) => {
+    if (chromeSocket && chromeSocket !== webSocket && chromeSocket.readyState === WebSocket.OPEN) {
+      chromeSocket.close(1000, "A newer AIBOX Chrome session connected.");
+    }
+    chromeSocket = webSocket;
+    webSocket.on("message", (raw) => {
+      let message;
+      try { message = JSON.parse(raw.toString()); } catch { return; }
+      if (message.type === "hello") {
+        if (message.extensionId !== EXTENSION_ID) {
+          webSocket.close(1008, "Unrecognized AIBOX extension.");
+          return;
+        }
+        webSocket.send(JSON.stringify({ type: "bridge-ready", app: "AIBOX" }));
+        return;
+      }
+      if (message.type === "result") settleChromeCommand(message);
+    });
+    webSocket.on("close", () => {
+      if (chromeSocket === webSocket) chromeSocket = null;
+      rejectAllChromeCommands(new Error("Chrome connector disconnected. Reopen Chrome or reload the AIBOX extension."));
+    });
+    webSocket.on("error", () => {
+      if (chromeSocket === webSocket) chromeSocket = null;
+    });
   });
-  window.on("closed", () => {
-    aiWindows.delete(providerId);
+
+  chromeBridgeServer.on("error", (error) => {
+    chromeBridgeError = error;
+    console.error("AIBOX Chrome connector server failed:", error);
   });
+  chromeBridgeServer.listen(PORT, HOST, () => {
+    chromeBridgeError = null;
+    console.log(`AIBOX Chrome connector listening on http://${HOST}:${PORT}`);
+  });
+}
+
+async function waitForChromeConnector(timeoutMs = 6500) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (chromeSocket && chromeSocket.readyState === WebSocket.OPEN) return true;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  return Boolean(chromeSocket && chromeSocket.readyState === WebSocket.OPEN);
 }
 
 async function openAIWindow(providerId) {
   if (!isAllowedProvider(providerId)) throw new Error("Выбран неподдерживаемый AI-сервис.");
+  if (generationBusy) throw new Error("Дождись завершения текущего хода, чтобы сменить ИИ-сервис.");
   selectedProvider = providerId;
-  let window = aiWindows.get(providerId);
+  const provider = PROVIDERS[providerId];
 
-  if (!window || window.isDestroyed()) {
-    const provider = PROVIDERS[providerId];
-    window = new BrowserWindow({
-      width: 1180,
-      height: 860,
-      minWidth: 760,
-      minHeight: 600,
-      show: false,
-      title: `AIBOX · ${provider.label}`,
-      autoHideMenuBar: true,
-      backgroundColor: "#111719",
-      webPreferences: {
-        partition: `persist:aibox-ai-${providerId}`,
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-      },
-    });
-    configureProviderWindow(window, providerId);
-    aiWindows.set(providerId, window);
-    await window.loadURL(provider.url);
-    window.show();
-    window.focus();
-  } else {
-    window.show();
-    window.focus();
+  if (chromeBridgeError) {
+    throw new Error("Не запустился локальный Chrome-коннектор AIBOX (порт 3210). Закрой старый AIBOX Bridge и перезапусти игру.");
+  }
+
+  let connectorReady = Boolean(chromeSocket && chromeSocket.readyState === WebSocket.OPEN);
+  if (!connectorReady) {
+    // Always open the provider in the user's actual default browser first.
+    await shell.openExternal(provider.url);
+    connectorReady = await waitForChromeConnector();
+  }
+
+  if (connectorReady) {
+    try {
+      await sendChromeCommand("open-provider", {}, 12000);
+      return {
+        provider: providerId,
+        title: provider.label,
+        connected: true,
+        message: `Открыл ${provider.label} в твоём обычном Chrome. AIBOX видит установленное расширение и использует текущую авторизованную сессию.`,
+      };
+    } catch {
+      connectorReady = false;
+    }
   }
 
   return {
     provider: providerId,
-    title: PROVIDERS[providerId].label,
-    message: `Окно ${PROVIDERS[providerId].label} открыто. Войди в аккаунт один раз, затем вернись в игру. Сессия сохранится на этом компьютере.`,
+    title: provider.label,
+    connected: false,
+    message: `Открыл ${provider.label} в обычном браузере, но AIBOX пока не видит Chrome Connector.
+
+Нажми «УСТАНОВИТЬ CHROME CONNECTOR», затем в chrome://extensions включи режим разработчика и загрузи распакованное расширение из показанной папки. После этого снова нажми «ОТКРЫТЬ ИИ В CHROME». Входи в свой обычный аккаунт — второй профиль не нужен.`,
   };
-}
-
-async function sendPrompt(window, providerId, prompt) {
-  const provider = PROVIDERS[providerId];
-  const payload = JSON.stringify({ prompt, composers: provider.composers, sendButtons: provider.sendButtons });
-  return window.webContents.executeJavaScript(`(() => {
-    const config = ${payload};
-    const visible = (element) => {
-      if (!element) return false;
-      const rect = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
-      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
-    };
-    let composer = null;
-    for (const selector of config.composers) {
-      composer = Array.from(document.querySelectorAll(selector)).find((element) => visible(element) && !element.disabled);
-      if (composer) break;
-    }
-    if (!composer) return { error: "Поле ввода не найдено. Проверь, что ты вошёл в аккаунт и открыл новый чат." };
-
-    const before = Array.from(document.querySelectorAll(
-      '[data-message-author-role="assistant"], .ds-markdown, .markdown-body, .model-response-text, .font-claude-message, [data-testid="chat-message"]'
-    )).map((element) => (element.innerText || "").trim()).filter(Boolean);
-    composer.focus();
-    if (composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement) {
-      const prototype = composer instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-      const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
-      if (setter) setter.call(composer, config.prompt);
-      else composer.value = config.prompt;
-      composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: config.prompt }));
-      composer.dispatchEvent(new Event("change", { bubbles: true }));
-    } else {
-      composer.focus();
-      document.execCommand("selectAll", false);
-      document.execCommand("insertText", false, config.prompt);
-      composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: config.prompt }));
-    }
-
-    let send = null;
-    for (const selector of config.sendButtons) {
-      send = Array.from(document.querySelectorAll(selector)).find(visible);
-      if (send) break;
-    }
-    if (send) send.click();
-    else composer.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true }));
-    return { beforeCount: before.length, beforeLast: before.at(-1) || "" };
-  })()`);
-}
-
-async function readAssistantState(window, providerId) {
-  const selectors = PROVIDERS[providerId].responses;
-  const stops = PROVIDERS[providerId].stopButtons;
-  const payload = JSON.stringify({ selectors, stops });
-  return window.webContents.executeJavaScript(`(() => {
-    const config = ${payload};
-    const visible = (element) => {
-      if (!element) return false;
-      const rect = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
-      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
-    };
-    let messages = [];
-    for (const selector of config.selectors) {
-      const found = Array.from(document.querySelectorAll(selector)).filter(visible);
-      if (found.length) {
-        messages = found.map((element) => (element.innerText || element.textContent || "").trim()).filter(Boolean);
-        if (messages.length) break;
-      }
-    }
-    let generating = false;
-    for (const selector of config.stops) {
-      if (Array.from(document.querySelectorAll(selector)).some(visible)) {
-        generating = true;
-        break;
-      }
-    }
-    return { count: messages.length, lastText: messages.at(-1) || "", generating };
-  })()`);
 }
 
 async function generateAI(prompt) {
@@ -213,67 +194,110 @@ async function generateAI(prompt) {
   if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 12000) {
     throw new Error("Промпт пустой или превышает 12 000 символов.");
   }
-
-  let window = aiWindows.get(selectedProvider);
-  if (!window || window.isDestroyed()) {
-    await openAIWindow(selectedProvider);
-    window = aiWindows.get(selectedProvider);
+  if (chromeBridgeError) {
+    throw new Error("Локальный Chrome-коннектор не запустился. Перезапусти AIBOX; порт 3210 должен быть свободен.");
   }
-  if (!window || window.isDestroyed()) throw new Error("Не удалось открыть окно AI-сервиса.");
+  if (!chromeSocket || chromeSocket.readyState !== WebSocket.OPEN) {
+    throw new Error("Chrome Connector не подключён. Нажми «УСТАНОВИТЬ CHROME CONNECTOR», загрузи расширение в chrome://extensions и обнови вкладку ИИ.");
+  }
 
   generationBusy = true;
   generationCancelled = false;
   try {
-    const sent = await sendPrompt(window, selectedProvider, prompt);
-    if (sent?.error) throw new Error(sent.error);
-
-    const deadline = Date.now() + 120000;
-    let previousText = "";
-    let stablePolls = 0;
-    while (Date.now() < deadline) {
-      if (generationCancelled) throw new Error("Ход ИИ отменён.");
-      if (window.isDestroyed()) throw new Error("Окно AI-сервиса было закрыто.");
-      const state = await readAssistantState(window, selectedProvider);
-      const hasNewAnswer = state.count > (sent.beforeCount || 0) || (state.lastText && state.lastText !== sent.beforeLast);
-      if (state.lastText && hasNewAnswer && state.lastText === previousText && !state.generating) {
-        stablePolls += 1;
-      } else {
-        stablePolls = 0;
-      }
-      previousText = state.lastText;
-      if (stablePolls >= 3) return state.lastText;
-      await new Promise((resolve) => setTimeout(resolve, 650));
+    const result = await sendChromeCommand("generate", { prompt }, 130000);
+    if (generationCancelled) throw new Error("Ход ИИ отменён.");
+    if (typeof result.response !== "string" || !result.response.trim()) {
+      throw new Error("Chrome вернул пустой ответ. Проверь вкладку выбранного ИИ.");
     }
-    throw new Error("ИИ не ответил за 120 секунд. Проверь окно сервиса и интернет-соединение.");
+    return result.response;
   } finally {
     generationBusy = false;
     generationCancelled = false;
   }
 }
 
-ipcMain.handle("aibox:ai:connect", async (_event, providerId) => openAIWindow(providerId));
-ipcMain.handle("aibox:ai:generate", async (_event, prompt) => generateAI(prompt));
-ipcMain.handle("aibox:ai:interrupt", async () => {
+async function interruptAI() {
   if (!generationBusy) return { interrupted: false };
   generationCancelled = true;
-  const window = selectedProvider ? aiWindows.get(selectedProvider) : null;
-  if (window && !window.isDestroyed()) {
-    try {
-      await window.webContents.executeJavaScript(`(() => {
-        const selectors = ['[data-testid="stop-button"]', 'button[aria-label*="Stop" i]', 'button[aria-label*="stop" i]'];
-        for (const selector of selectors) {
-          const button = Array.from(document.querySelectorAll(selector)).find((element) => {
-            const rect = element.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
-          });
-          if (button) { button.click(); return true; }
-        }
-        return false;
-      })()`);
-    } catch {}
-  }
+  if (!chromeSocket || chromeSocket.readyState !== WebSocket.OPEN) return { interrupted: true };
+  try {
+    await sendChromeCommand("interrupt", {}, 5000);
+  } catch {}
   return { interrupted: true };
-});
+}
+
+async function openChromeExtensionSettings() {
+  const launch = (executable, args) => {
+    const child = execFile(executable, args, { detached: true, stdio: "ignore" }, (error) => {
+      if (error) console.warn("Could not open Chrome extension settings:", error.message);
+    });
+    child.unref();
+  };
+
+  if (process.platform === "win32") {
+    const roots = [
+      process.env.PROGRAMFILES,
+      process.env["PROGRAMFILES(X86)"],
+      process.env.LOCALAPPDATA,
+    ].filter(Boolean);
+    for (const root of roots) {
+      const executable = path.join(root, "Google", "Chrome", "Application", "chrome.exe");
+      try {
+        await fs.access(executable);
+        launch(executable, ["chrome://extensions/"]);
+        return true;
+      } catch {}
+    }
+  } else if (process.platform === "darwin") {
+    launch("open", ["-a", "Google Chrome", "chrome://extensions/"]);
+    return true;
+  } else {
+    for (const executable of ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
+      const located = spawnSync("which", [executable], { encoding: "utf8" });
+      if (located.status === 0 && located.stdout.trim()) {
+        launch(located.stdout.trim(), ["chrome://extensions/"]);
+        return true;
+      }
+    }
+  }
+
+  try {
+    await shell.openExternal("chrome://extensions/");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function installChromeConnector() {
+  const source = app.isPackaged
+    ? path.join(process.resourcesPath, "chrome-extension")
+    : path.join(__dirname, "..", "chrome-extension");
+  const destination = path.join(app.getPath("userData"), "chrome-extension");
+  await fs.access(path.join(source, "manifest.json"));
+  await fs.mkdir(destination, { recursive: true });
+  await fs.cp(source, destination, { recursive: true, force: true });
+  clipboard.writeText(destination);
+  const chromeOpened = await openChromeExtensionSettings();
+  return {
+    path: destination,
+    chromeOpened,
+    message: `Папка расширения скопирована в буфер обмена: ${destination}
+
+${chromeOpened ? "Chrome открыл chrome://extensions." : "Открой chrome://extensions вручную."}
+1. Включи «Режим разработчика».
+2. Нажми «Загрузить распакованное расширение».
+3. Вставь путь из буфера обмена и выбери эту папку.
+4. Оставь Chrome открытым, обнови вкладку выбранного ИИ и вернись в AIBOX.
+
+Это одноразовое подтверждение Chrome. Cookies и пароли остаются в твоём обычном профиле Chrome.`,
+  };
+}
+
+ipcMain.handle("aibox:ai:connect", async (_event, providerId) => openAIWindow(providerId));
+ipcMain.handle("aibox:ai:generate", async (_event, prompt) => generateAI(prompt));
+ipcMain.handle("aibox:ai:interrupt", async () => interruptAI());
+ipcMain.handle("aibox:ai:install-chrome", async () => installChromeConnector());
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -296,13 +320,6 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
-  mainWindow.on("close", () => {
-    isQuitting = true;
-    for (const providerWindow of aiWindows.values()) {
-      if (!providerWindow.isDestroyed()) providerWindow.destroy();
-    }
-  });
-
   mainWindow.webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown") return;
     if (input.key === "F11") {
@@ -315,7 +332,6 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
-
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://") || url.startsWith("http://")) shell.openExternal(url);
     return { action: "deny" };
@@ -323,6 +339,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  startChromeBridge();
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -330,7 +347,10 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
-  isQuitting = true;
+  rejectAllChromeCommands(new Error("AIBOX is closing."));
+  try { chromeSocket?.close(); } catch {}
+  try { chromeBridgeWss?.close(); } catch {}
+  try { chromeBridgeServer?.close(); } catch {}
 });
 
 app.on("window-all-closed", () => {

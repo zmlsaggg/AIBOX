@@ -3,7 +3,7 @@ import type { AIProvider } from "./contracts";
 export type BrowserProviderId = "chatgpt" | "deepseek" | "qwen" | "gemini" | "claude";
 
 export class BrowserProvider implements AIProvider {
-  readonly name = "BROWSER SESSION";
+  readonly name = "CHROME SESSION";
   private provider: BrowserProviderId = "chatgpt";
 
   configure(provider: BrowserProviderId): void {
@@ -19,12 +19,13 @@ export class BrowserProvider implements AIProvider {
       throw new Error("Подключение к сайтам ИИ доступно в установленной Windows-версии AIBOX. Запусти игру через AIBOX.exe.");
     }
     const result = await window.aiboxAI.connect(this.provider);
+    if (!result.connected) throw new Error(result.message);
     return result.message;
   }
 
   async generate(prompt: string, signal: AbortSignal): Promise<string> {
     if (!window.aiboxAI) {
-      throw new Error("Встроенный AI-браузер доступен только в Windows-версии AIBOX.");
+      throw new Error("Подключение к авторизованным вкладкам Chrome доступно в установленной Windows-версии AIBOX.");
     }
 
     const abort = () => {

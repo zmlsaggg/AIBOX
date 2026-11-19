@@ -1,0 +1,59 @@
+{
+  "name": "AIBOX Prisoner",
+  "seed": 91002,
+  "gender": 1,
+  "age": 0.47,
+  "muscle": 0.58,
+  "weight": 0.54,
+  "height": 0.48,
+  "proportions": 0.72,
+  "african": 0.62,
+  "asian": 0.08,
+  "caucasian": 0.3,
+  "breastSize": 0.5,
+  "breastFirmness": 0.5,
+  "modifiers": {
+    "head/head-square": 0.04,
+    "chin/chin-width": 0.02
+  },
+  "skin": "auto",
+  "skinTint": "#ffffff",
+  "eyes": "brown",
+  "eyebrows": "eyebrow003",
+  "eyelashes": "eyelashes01",
+  "hair": "buzz",
+  "hairTint": "#ffffff",
+  "hairColor": "#201814",
+  "facialHair": "stubble",
+  "beardColor": "#2b2119",
+  "tattoos": [],
+  "tattooInk": "#1c2128",
+  "earrings": "none",
+  "earringMetal": "silver",
+  "outfit": "none",
+  "top": "uniform_shirt",
+  "bottom": "uniform_trousers",
+  "underwear": true,
+  "accessories": [],
+  "garmentStyles": {
+    "uniform_shirt": {
+      "pattern": "solid",
+      "color": "#b85b31",
+      "color2": "#e09a66"
+    },
+    "uniform_trousers": {
+      "pattern": "solid",
+      "color": "#6a392b",
+      "color2": "#8e4a32"
+    }
+  },
+  "shoes": "combat_boots",
+  "hat": "none",
+  "outfitTint": "#ffffff",
+  "detail": "high",
+  "rig": "game",
+  "faceBones": true,
+  "restPose": "T",
+  "animations": true,
+  "weapon": "none"
+}

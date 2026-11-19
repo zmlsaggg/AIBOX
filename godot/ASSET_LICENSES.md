@@ -1,27 +1,33 @@
 # Native character assets
 
-AIBOX uses two rigged humanoid models from the **Tevy CC0 People** collection:
+AIBOX generates its guard and prisoner models with **Ara 3D Gen** from the
+[TuriaArt/3d-gen-TU](https://github.com/TuriaArt/3d-gen-TU) project, pinned to
+commit `3d78dcad462feeeb64db7fe667a7c34105a10a45`.
 
-| In-game role | Model | Local file | Geometry |
-|---|---|---|---|
-| Warden / guards | [Dog Walker](https://tevy.dev/models/dog-walker) — older male character in a dark waxed-look jacket, trousers, leather shoes and cap | `assets/characters/guard_dog_walker.glb` | 27,997 triangles; 56-bone rig |
-| Prisoner | [Casual Walker](https://tevy.dev/models/casual-walker) — young man in a grey hoodie, jeans and white trainers | `assets/characters/prisoner_casual_walker.glb` | 27,997 triangles; 56-bone rig |
+| In-game role | Generated preset |
+|---|---|
+| Warden / guards | AIBOX Warden — photo-based skin, high-detail geometry, navy security uniform, boots and utility belt |
+| Prisoner | AIBOX Prisoner — photo-based skin, high-detail geometry, orange prison uniform and boots |
 
-Both models include four looping animation clips: `idle`, `walk`, `wave` and `look_around`.
-The models are approximately 1.75–1.79 m tall, face +Z, and have their origins between the feet.
+The export uses Ara's high-detail mode (the generator documents approximately
+100,000–120,000 triangles), the 65-bone Mixamo-compatible game rig plus facial
+bones, and embedded idle, walk, run, reverse-walk, crouch, jump, punch and hit
+animations. GLB exports contain PBR textures and normal maps.
 
-**License:** CC0 1.0 Universal. The publisher's model pages and manifest identify both files as CC0 1.0; no attribution is required, including in commercial games.
+**Licensing:** Ara 3D Gen's source code is MIT-licensed. The character data
+(base mesh, morph targets, MakeHuman skeleton, skins, hair and clothing) is
+derived from MakeHuman and explicitly released as **CC0 1.0 Universal**.
+The generator documents exported characters as usable in commercial and
+non-commercial projects without attribution. See the upstream
+`scripts/ASSETS_LICENSE.txt` and
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
 
-Pinned immutable v1 download URLs:
+The first asset preparation downloads the pinned generator and its CC0
+MakeHuman source data (about 420 MB), builds the runtime asset library, and
+exports the two GLBs. These generated files remain ignored build artifacts;
+CI regenerates and validates them before importing the Godot project.
 
-- Guard: `https://tevy.dev/models/dog-walker/v1/lod0.glb`
-- Prisoner: `https://tevy.dev/models/casual-walker/v1/lod0.glb`
+Run locally:
 
-The bootstrap scripts validate both exact byte sizes and SHA-256 hashes before making the files available to Godot. This avoids silently accepting an HTML error page or changed upstream model.
-
-Run the asset bootstrap once before opening the project locally:
-
-- Windows: `powershell -ExecutionPolicy Bypass -File .\scripts\download_assets.ps1`
-- Linux/macOS: `bash scripts/download_assets.sh`
-
-GitHub Actions performs this bootstrap automatically before Godot import and animation smoke tests. Model files are downloaded assets, not committed binary files.
+- Windows: `powershell -ExecutionPolicy Bypass -File .\godot\scripts\generate_characters.ps1`
+- Linux/macOS: `bash godot/scripts/generate_characters.sh`

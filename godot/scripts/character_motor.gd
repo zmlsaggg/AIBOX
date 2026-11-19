@@ -30,6 +30,7 @@ var hips_bone: int = -1
 var head_bone: int = -1
 var idle_animation: StringName = &""
 var walk_animation: StringName = &""
+var run_animation: StringName = &""
 
 @onready var visual_root: Node3D = get_node_or_null("VisualRoot")
 @onready var left_leg: Node3D = get_node_or_null("VisualRoot/LeftLeg")
@@ -62,7 +63,14 @@ func clear_move_target() -> void:
 func set_animation_player(player: AnimationPlayer) -> void:
 	animation_player = player
 	idle_animation = _find_animation(["idle", "stand", "breath"])
-	walk_animation = _find_animation(["walk", "run", "move"])
+	walk_animation = _find_animation(["walk"])
+	run_animation = _find_animation(["run"])
+	for clip in [idle_animation, walk_animation, run_animation]:
+		if clip == &"":
+			continue
+		var animation := animation_player.get_animation(String(clip))
+		if animation:
+			animation.loop_mode = Animation.LOOP_LINEAR
 
 func set_skeleton(value: Skeleton3D) -> void:
 	skeleton = value
@@ -137,14 +145,16 @@ func _find_animation(terms: Array[String]) -> StringName:
 				return StringName(animation_name)
 	return &""
 
-func _play_model_animation(moving: bool) -> bool:
+func _play_model_animation(moving: bool, speed: float) -> bool:
 	if animation_player == null:
 		return false
-	var clip := walk_animation if moving and walk_animation != &"" else idle_animation
+	var clip := idle_animation
+	if moving:
+		clip = run_animation if speed > walk_speed * 1.18 and run_animation != &"" else walk_animation
 	if clip == &"":
 		return false
 	if animation_player.current_animation != String(clip) or not animation_player.is_playing():
-		animation_player.play(clip, 0.16)
+		animation_player.play(clip, 0.18)
 	return true
 
 func _physics_process(delta: float) -> void:
@@ -197,13 +207,27 @@ func _physics_process(delta: float) -> void:
 		velocity.y = -0.12
 
 	move_and_slide()
+	_push_dynamic_props(horizontal_velocity)
 	_update_animation(delta, moving, horizontal_velocity.length())
+
+func _push_dynamic_props(horizontal_velocity: Vector3) -> void:
+	if horizontal_velocity.length_squared() < 0.16:
+		return
+	for index in range(get_slide_collision_count()):
+		var collision := get_slide_collision(index)
+		var body := collision.get_collider()
+		if body is RigidBody3D and body.is_in_group("pickup_items"):
+			var push_direction := -collision.get_normal()
+			push_direction.y = clampf(push_direction.y, -0.1, 0.25)
+			if push_direction.length_squared() > 0.001:
+				var strength := clampf(horizontal_velocity.length() * body.mass * 0.42, 0.35, 3.2)
+				body.apply_central_impulse(push_direction.normalized() * strength)
 
 func _update_animation(delta: float, moving: bool, speed: float) -> void:
 	if visual_root == null:
 		return
 
-	var has_imported_clip := _play_model_animation(moving and speed > 0.12)
+	var has_imported_clip := _play_model_animation(moving and speed > 0.12, speed)
 	if not has_imported_clip:
 		if skeleton:
 			_update_rig_animation(delta, moving, speed)

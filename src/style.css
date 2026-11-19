@@ -235,7 +235,7 @@ button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
     linear-gradient(180deg, rgba(3, 7, 8, .22), transparent 18%, transparent 76%, rgba(3, 7, 8, .32)),
     radial-gradient(ellipse at center, transparent 48%, rgba(3, 7, 8, .28) 100%);
 }
-#world-canvas { filter: saturate(.82) contrast(1.04); }
+#world-canvas { filter: saturate(1.12) contrast(1.08) brightness(1.04); }
 .map-compass {
   position: absolute;
   z-index: 2;
@@ -694,3 +694,26 @@ button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Chrome profile connector: secondary setup action above the main provider action. */
+.chrome-install-button {
+  min-height: 40px;
+  padding: 9px 10px;
+  border: 1px solid rgba(208, 174, 119, .28);
+  border-radius: 4px;
+  color: #d7b98e;
+  background: linear-gradient(180deg, rgba(208, 174, 119, .085), rgba(208, 174, 119, .035));
+  font: 8px var(--mono);
+  letter-spacing: .09em;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease, transform .2s ease, opacity .2s ease;
+}
+.chrome-install-button:hover {
+  background: rgba(208, 174, 119, .14);
+  border-color: rgba(208, 174, 119, .52);
+  transform: translateY(-1px);
+}
+.chrome-install-button:disabled { opacity: .55; cursor: wait; }
+.browser-session-controls { gap: 8px; }
+#browser-connection-status { white-space: pre-wrap; }

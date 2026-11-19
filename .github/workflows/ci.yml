@@ -18,8 +18,14 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
-      - name: Check Electron main and preload syntax
-        run: node --check electron/main.cjs && node --check electron/preload.cjs
+      - name: Check Electron and Chrome extension syntax
+        run: |
+          node --check electron/main.cjs
+          node --check electron/preload.cjs
+          node --check chrome-extension/background.js
+          node --check chrome-extension/content.js
+      - name: Verify Chrome extension identity and permissions
+        run: node tools/verify-chrome-extension.mjs
       - name: Typecheck and production build
         run: npm run build
 
@@ -35,12 +41,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node.js for GLB compatibility conversion
+      - name: Setup Node.js for Ara character generation
         uses: actions/setup-node@v4
         with:
           node-version: 22.12.0
-      - name: Install GLB conversion dependencies
-        run: npm install
+      - name: Cache Ara generator and CC0 MakeHuman source assets
+        uses: actions/cache@v4
+        with:
+          path: |
+            .aibox-ara3d/node_modules
+            .aibox-ara3d/vendor
+            .aibox-ara3d/public/assets
+          key: ara3d-${{ runner.os }}-3d78dcad462feeeb64db7fe667a7c34105a10a45
       - name: Setup Godot 4.7.2 Stable
         uses: chickensoft-games/setup-godot@v2
         with:
@@ -49,10 +61,10 @@ jobs:
           include-templates: false
       - name: Verify Godot version
         run: godot --version
-      - name: Download pinned CC0 character models
-        run: bash godot/scripts/download_assets.sh
-      - name: Verify character assets
-        run: test -s godot/assets/characters/guard_dog_walker.glb && test -s godot/assets/characters/prisoner_casual_walker.glb
+      - name: Generate high-detail CC0 guard and prisoner
+        run: bash godot/scripts/generate_characters.sh
+      - name: Verify generated character files
+        run: test -s godot/assets/characters/guard.glb && test -s godot/assets/characters/prisoner.glb
       - name: Import and parse native project
         run: godot --headless --path godot --editor --quit --log-file godot-import.log
       - name: Verify rigged character assets
@@ -65,3 +77,11 @@ jobs:
           if grep -E "ERROR:|SCRIPT ERROR|Parse Error|AIBOX NAVIGATION SMOKE FAILED" godot-import.log godot-smoke.log; then
             exit 1
           fi
+      - name: Upload generated Godot characters
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aibox-godot-characters
+          path: godot/assets/characters/*.glb
+          if-no-files-found: error
+          retention-days: 30
