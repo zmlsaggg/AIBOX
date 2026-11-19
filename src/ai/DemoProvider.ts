@@ -45,12 +45,12 @@ export class DemoProvider implements AIProvider {
       },
       {
         intent: "Проверить положение ключ-карты и спланировать её получение.",
-        action: { type: "inspect", target: "keycard", narration: "Я ищу ключ-карту в контрольной зоне." },
+        action: { type: "interact", target: "keycard", narration: "Я подбираю ключ-карту, чтобы открыть контрольно-пропускные двери." },
         alternatives: [
           { type: "move", x: -3.2, z: 6.15, pace: "cautious", narration: "Подойти к ключ-карте." },
           { type: "inspect", target: "control-door", narration: "Проверить дверь в контрольную зону." },
         ],
-        memoryUpdate: "Осмотр предмета срабатывает только на близкой дистанции; после подтверждения местоположения нужно подойти и подобрать его.",
+        memoryUpdate: "Ключ-карта находится рядом с выходом из камеры и подходит для разблокировки checkpoint-дверей.",
       },
     ];
     const decision = samples[(turn - 1) % samples.length];
