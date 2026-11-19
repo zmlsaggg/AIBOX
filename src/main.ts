@@ -198,8 +198,8 @@ if (!introOverlay || !startOverlay || !introEnter || !bridgeHelpToggle || !bridg
 }
 
 function enterFacility(): void {
-  introOverlay.classList.add("hidden");
-  startOverlay.classList.remove("hidden");
+  introOverlay?.classList.add("hidden");
+  startOverlay?.classList.remove("hidden");
 }
 
 introEnter.addEventListener("click", enterFacility);
