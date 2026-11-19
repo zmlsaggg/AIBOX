@@ -54,6 +54,15 @@ func _ready() -> void:
 	add_child(route_planner)
 	await get_tree().physics_frame
 	_rebuild_navigation()
+	var route_smoke: Dictionary = route_planner.call(
+		"find_route",
+		prisoner.global_position,
+		prisoner.global_position + Vector3(-1.0, 0.0, 0.0)
+	)
+	if not route_smoke.get("ok", false):
+		push_error("AIBOX NAVIGATION SMOKE FAILED: %s" % str(route_smoke.get("reason", "No route")))
+	else:
+		print("AIBOX NAVIGATION SMOKE OK: %s waypoint(s)." % str(route_smoke.get("waypoint_count", 0)))
 
 	ai_controller = AITurnControllerScript.new()
 	ai_controller.prisoner = prisoner
