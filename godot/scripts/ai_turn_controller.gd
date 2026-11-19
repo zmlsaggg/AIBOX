@@ -8,12 +8,12 @@ signal action_result(success: bool, message: String)
 
 func apply_json_response(raw_text: String) -> bool:
 	var parsed: Variant = JSON.parse_string(raw_text)
-	if not parsed is Dictionary:
+	if typeof(parsed) != TYPE_DICTIONARY:
 		action_result.emit(false, "AI response must be a JSON object.")
 		return false
 
 	var action: Variant = parsed.get("action", parsed)
-	if not action is Dictionary:
+	if typeof(action) != TYPE_DICTIONARY:
 		action_result.emit(false, "AI response is missing an action object.")
 		return false
 
