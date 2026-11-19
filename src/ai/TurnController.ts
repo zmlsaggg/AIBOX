@@ -1,19 +1,35 @@
-import { parsePrisonerAction } from "./ActionParser";
+import { parsePrisonerDecision } from "./ActionParser";
 import { buildPrisonerPrompt } from "./PromptBuilder";
-import type { AIProvider, PrisonSnapshot, TurnResult } from "./contracts";
+import type { AIProvider, ActionOutcome, PrisonSnapshot, PrisonerAction, PrisonerDecision, TurnMemoryEntry, TurnResult } from "./contracts";
 
 export type TurnState = "idle" | "generating" | "applying" | "interrupted" | "error";
+export type DecisionUpdate = (decision: PrisonerDecision, history: TurnMemoryEntry[], memorySummary: string) => void;
+
+function signature(action: PrisonerAction): string {
+  switch (action.type) {
+    case "move": return `move:${action.x.toFixed(1)}:${action.z.toFixed(1)}:${action.pace}`;
+    case "inspect": return `inspect:${action.target.toLowerCase()}`;
+    case "interact": return `interact:${action.target.toLowerCase()}`;
+    case "use_item": return `use_item:${action.target.toLowerCase()}`;
+    case "throw": return `throw:${action.x.toFixed(1)}:${action.z.toFixed(1)}`;
+    case "speak": return `speak:${action.message.toLowerCase()}`;
+    case "wait": return "wait";
+  }
+}
 
 export class TurnController {
   private turn = 0;
   private generation = 0;
   private controller: AbortController | null = null;
   private state: TurnState = "idle";
+  private readonly history: TurnMemoryEntry[] = [];
+  private memorySummary = "No confirmed lessons yet.";
 
   constructor(
     private provider: AIProvider,
-    private readonly apply: (result: TurnResult) => void,
+    private readonly apply: (result: TurnResult) => ActionOutcome,
     private readonly onState: (state: TurnState, detail?: string) => void,
+    private readonly onDecision: DecisionUpdate,
   ) {}
 
   setProvider(provider: AIProvider): boolean {
@@ -22,31 +38,69 @@ export class TurnController {
     return true;
   }
 
-  get currentState(): TurnState {
-    return this.state;
-  }
+  get currentState(): TurnState { return this.state; }
+  get turnCount(): number { return this.turn; }
 
-  async takeTurn(snapshot: Omit<PrisonSnapshot, "turn">): Promise<void> {
+  async takeTurn(snapshot: Omit<PrisonSnapshot, "turn" | "history" | "memorySummary">): Promise<void> {
     if (this.state === "generating" || this.state === "applying") return;
-
     const turn = this.turn + 1;
     const generation = ++this.generation;
     const controller = new AbortController();
     this.controller = controller;
-    this.setState("generating", `Ход ${turn}: ${this.provider.name} генерирует действие`);
+    this.setState("generating", `Ход ${turn}: ${this.provider.name} анализирует память и выбирает действие`);
 
     try {
-      const prompt = buildPrisonerPrompt({ ...snapshot, turn });
+      const prompt = buildPrisonerPrompt({
+        ...snapshot,
+        turn,
+        history: this.history.slice(-10),
+        memorySummary: this.memorySummary,
+      });
       const raw = await this.provider.generate(prompt, controller.signal);
-
-      // A cancelled or superseded browser response must never reach the world.
       if (generation !== this.generation || controller.signal.aborted) return;
 
-      const action = parsePrisonerAction(raw);
-      this.setState("applying", `Ход ${turn}: проверка и применение действия`);
-      this.apply({ turn, action, narration: action.narration });
+      const decision = parsePrisonerDecision(raw);
+      const failedSignatures = new Set(this.history.filter((entry) => !entry.success).slice(-5).map((entry) => signature(entry.action)));
+      let selected = decision.action;
+      let repetitionNote = "";
+      if (failedSignatures.has(signature(selected))) {
+        const alternative = decision.alternatives.find((candidate) => signature(candidate) !== signature(selected) && !failedSignatures.has(signature(candidate)));
+        if (alternative) {
+          selected = alternative;
+          repetitionNote = "Повтор неудачного действия автоматически заменён альтернативой модели.";
+        } else {
+          selected = { type: "wait", narration: "Я меняю подход и заново оцениваю ситуацию вместо повторения неудачной попытки." };
+          repetitionNote = "Повтор неудачного действия заблокирован; выполнено безопасное переосмысление.";
+        }
+      }
+
+      this.setState("applying", `Ход ${turn}: применение ${selected.type}`);
+      const outcome = this.apply({
+        turn,
+        decision: { ...decision, action: selected },
+        action: selected,
+        narration: selected.narration,
+        outcome: { success: false, summary: "Action pending" },
+      });
+      const finalOutcome = repetitionNote
+        ? { success: outcome.success, summary: `${outcome.summary} ${repetitionNote}` }
+        : outcome;
+
       this.turn = turn;
-      this.setState("idle", `Ход ${turn} завершён`);
+      this.history.push({
+        turn,
+        intent: decision.intent,
+        action: selected,
+        outcome: finalOutcome.summary,
+        success: finalOutcome.success,
+        memoryUpdate: decision.memoryUpdate,
+      });
+      while (this.history.length > 30) this.history.shift();
+      if (decision.memoryUpdate) {
+        this.memorySummary = `${this.memorySummary} ${decision.memoryUpdate}`.trim().slice(-1800);
+      }
+      this.onDecision({ ...decision, action: selected }, this.history.slice(), this.memorySummary);
+      this.setState("idle", `Ход ${turn} завершён · ${finalOutcome.success ? "успех" : "неудача"}`);
     } catch (error) {
       if (generation !== this.generation) return;
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -61,7 +115,6 @@ export class TurnController {
 
   interrupt(): boolean {
     if (!this.controller || this.state !== "generating") return false;
-    // Invalidate the generation before aborting: late responses are discarded.
     this.generation += 1;
     this.controller.abort();
     this.controller = null;
