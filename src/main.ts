@@ -173,8 +173,8 @@ if (!introOverlay || !startOverlay || !introEnter) {
 }
 
 function enterFacility(): void {
-  introOverlay.classList.add("hidden");
-  startOverlay.classList.remove("hidden");
+  introOverlay?.classList.add("hidden");
+  startOverlay?.classList.remove("hidden");
 }
 
 introEnter.addEventListener("click", enterFacility);
