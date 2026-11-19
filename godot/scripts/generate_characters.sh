@@ -31,7 +31,7 @@ mkdir -p "$DESTINATION"
   --generator "$GENERATOR" \
   --params "$SCRIPT_DIR/guard.params.json" \
   --out "$DESTINATION/guard.glb"
-node "$GENERATOR/node_modules/tsx/dist/cli.mjs" "$ROOT/tools/aibox-characters/export-character.ts" \
+"$GENERATOR/node_modules/.bin/tsx" "$ROOT/tools/aibox-characters/export-character.ts" \
   --generator "$GENERATOR" \
   --params "$SCRIPT_DIR/prisoner.params.json" \
   --out "$DESTINATION/prisoner.glb"
