@@ -7,7 +7,7 @@ export type DecisionUpdate = (decision: PrisonerDecision, history: TurnMemoryEnt
 
 function signature(action: PrisonerAction): string {
   switch (action.type) {
-    case "move": return `move:${action.x.toFixed(1)}:${action.z.toFixed(1)}:${action.pace}`;
+    case "move": return `move:${(Math.round(action.x * 2) / 2).toFixed(1)}:${(Math.round(action.z * 2) / 2).toFixed(1)}`;
     case "inspect": return `inspect:${action.target.toLowerCase()}`;
     case "interact": return `interact:${action.target.toLowerCase()}`;
     case "use_item": return `use_item:${action.target.toLowerCase()}`;
