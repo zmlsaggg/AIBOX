@@ -13,3 +13,7 @@ godot/export_presets.cfg
 
 # Original compressed model files stay outside the Godot import root
 .aibox-source-assets/
+
+# Pinned Ara 3D Gen checkout, CC0 source data and generated character assets
+.aibox-ara3d/
+godot/assets/characters/*.glb
