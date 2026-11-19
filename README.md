@@ -116,8 +116,8 @@ npm run desktop:build
 ```
 
 The `release/` directory contains:
-- `AIBOX-<version>-x64-nsis.exe` — Windows installer.
-- `AIBOX-<version>-portable.exe` — portable executable.
+- `AIBOX-<version>-Setup-x64.exe` — Windows installer.
+- `AIBOX-<version>-Portable-x64.exe` — portable executable.
 
 ### Android
 
