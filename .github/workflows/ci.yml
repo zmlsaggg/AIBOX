@@ -18,6 +18,8 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
+      - name: Check Electron main and preload syntax
+        run: node --check electron/main.cjs && node --check electron/preload.cjs
       - name: Typecheck and production build
         run: npm run build
 
@@ -26,3 +28,28 @@ jobs:
     uses: ./.github/workflows/build-release.yml
     permissions:
       contents: write
+
+  godot-native:
+    name: Godot 4.7.2 native project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Godot 4.7.2 Stable
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: false
+      - name: Verify Godot version
+        run: godot --version
+      - name: Import and parse native project
+        run: godot --headless --path godot --editor --quit
+      - name: Run native project smoke test
+        run: godot --headless --path godot --quit-after 5 --log-file godot-smoke.log
+      - name: Fail on script or runtime errors
+        if: always()
+        run: |
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR: Cannot" godot-smoke.log; then
+            exit 1
+          fi
